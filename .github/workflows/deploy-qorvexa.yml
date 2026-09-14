@@ -12,10 +12,7 @@ concurrency:
   group: qorvexa-pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}qorvexa-dex/
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +59,14 @@ jobs:
         if: github.ref == 'refs/heads/main'
         with:
           path: public
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}qorvexa-dex/
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy
-        if: github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v4

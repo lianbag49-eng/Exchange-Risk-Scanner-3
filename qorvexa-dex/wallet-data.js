@@ -39,6 +39,12 @@ export async function readToken(client,contract,owner){
  return {address:token,name:cleanText(name),symbol:cleanText(symbol,24),decimals,raw:balance.toString(),price:null,verified:false};
 }
 export async function indexedTokens(net,owner){
+ if(net.route){
+  const response=await fetchJSON(`https://api.routescan.io/v2/network/mainnet/evm/${net.chain.id}/address/${owner}/erc20-holdings?limit=100`);
+  if(!Array.isArray(response.items))throw Error('Token holdings index unavailable.');
+  const tokens=response.items.slice(0,100).flatMap(x=>{try{const decimals=Number(x.tokenDecimals);if(!Number.isInteger(decimals)||decimals<0||decimals>36)return [];return [{address:address(x.tokenAddress),name:cleanText(x.tokenName),symbol:cleanText(x.tokenSymbol,24),decimals,raw:uint(x.tokenQuantity).toString(),price:null,verified:false}];}catch{return []}});
+  tokens.partial=!!response.links?.next||response.items.length>=100;return tokens;
+ }
  if(net.noBlockscout)throw Error('Automatic token discovery is unavailable on this network. Import a token by contract address.');
  const rows=await fetchJSON(net.explorer+'/api/v2/addresses/'+owner+'/token-balances');
  if(!Array.isArray(rows))throw Error('Token index response unavailable.');
@@ -46,6 +52,12 @@ export async function indexedTokens(net,owner){
   try{const decimals=Number(x.token.decimals);if(!Number.isInteger(decimals)||decimals<0||decimals>36)return [];
   return [{address:address(x.token.address_hash||x.token.address),name:cleanText(x.token.name),symbol:cleanText(x.token.symbol,24),decimals,raw:uint(x.value).toString(),price:Number(x.token.exchange_rate)>0?Number(x.token.exchange_rate):null,verified:false}];}catch{return []}
  });
+}
+export async function nativeBalance(client,net,owner){
+ if(net.route&&client.transport.type!=='custom'){
+  try{const p=new URLSearchParams({module:'account',action:'balance',address:owner,tag:'latest'});const r=await fetchJSON(`https://api.routescan.io/v2/network/mainnet/evm/${net.chain.id}/etherscan/api?${p}`);if(r.status==='1')return uint(r.result);}catch{}
+ }
+ return client.getBalance({address:owner});
 }
 export async function legacyHistory(net,owner,kind,page=1){
  const action={normal:'txlist',tokens:'tokentx',internal:'txlistinternal'}[kind];
@@ -81,7 +93,7 @@ export async function tokenPrices(net,tokens){
  return new Map(candidates.map((t,i)=>{const p=data.coins?.[keys[i]];return [t.address.toLowerCase(),Number.isFinite(p?.price)&&p.price>0&&Number.isFinite(p?.timestamp)&&Math.abs(Date.now()/1000-p.timestamp)<7200?p.price:null]}));
 }
 export async function currentHoldings(client,net,owner,customTokens=[]){
- const result=await Promise.allSettled([client.getBalance({address:owner}),indexedTokens(net,owner),nativePrice(net)]);
+ const result=await Promise.allSettled([nativeBalance(client,net,owner),indexedTokens(net,owner),nativePrice(net)]);
  const native={...nativeToken(net),raw:result[0].status==='fulfilled'?result[0].value.toString():null,price:result[2].status==='fulfilled'?result[2].value:null};
  const tokens=result[1].status==='fulfilled'?result[1].value:[];
  const discovered=new Set(tokens.map(t=>t.address.toLowerCase()));
@@ -95,7 +107,7 @@ export async function currentHoldings(client,net,owner,customTokens=[]){
  }
  const unique=[...new Map(tokens.map(t=>[t.address.toLowerCase(),t])).values()];
  try{const prices=await tokenPrices(net,unique);unique.forEach(t=>{t.price=prices.get(t.address.toLowerCase())??t.price})}catch{}
- return {tokens:[native,...unique],balanceError:result[0].status==='rejected',discoveryLimited:result[1].status==='rejected'||tokens.length>=200,importError:imported.some(r=>r.status==='rejected'),updated:Date.now()};
+ return {tokens:[native,...unique],balanceError:result[0].status==='rejected',discoveryLimited:result[1].status==='rejected'||result[1].value?.partial||tokens.length>=200,importError:imported.some(r=>r.status==='rejected'),updated:Date.now()};
 }
 export async function checkAllowance(client,token,owner,spender){
  const [details,value]=await Promise.all([readToken(client,token,owner),client.readContract({address:address(token),abi:erc20Abi,functionName:'allowance',args:[address(owner),address(spender)]})]);

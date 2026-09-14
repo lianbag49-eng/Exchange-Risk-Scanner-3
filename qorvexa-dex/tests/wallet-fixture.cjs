@@ -36,6 +36,8 @@ async function fixture(page,options={}){
   if(url.hostname==='yields.llama.fi')return route.fulfill({json:{data:[{pool:'fixture-pool',project:'aave-v3',chain:'Ethereum',symbol:'USDC',apy:3.25,tvlUsd:100000000}]}});
   if(url.pathname.includes('/token-balances'))return route.fulfill({json:[{value:'100000000',token:{type:'ERC-20',address_hash:T,name:'USD Coin',symbol:'USDC',decimals:'6',exchange_rate:'1'}}]});
   if(url.hostname==='api.routescan.io'){
+   if(url.pathname.includes('/erc20-holdings'))return route.fulfill({json:{items:[{tokenQuantity:'100000000',tokenAddress:T,tokenName:'USD Coin',tokenSymbol:'USDC',tokenDecimals:6}]}});
+   if(url.searchParams.get('action')==='balance')return route.fulfill({json:{status:'1',message:'OK',result:'2000000000000000000'}});
    if(options.historyFail)return route.fulfill({status:503,body:'Unavailable'});
    const action=url.searchParams.get('action'),p=Number(url.searchParams.get('page')||1),tx=(i)=>({hash:'0x'+i.toString(16).padStart(64,'0'),from:i%2?A:B,to:i%2?B:A,value:'10000000000000000',timeStamp:String(1700000000+i),isError:i===2?'1':'0',blockNumber:'100',input:'0x',gasUsed:'21000',gasPrice:'1000000000'});
    const result=action==='txlist'?(p===1?Array.from({length:50},(_,i)=>tx(i+1)):[tx(51)]):action==='tokentx'?[{...tx(900),value:'1200000',tokenDecimal:'6',tokenSymbol:'USDC',contractAddress:T,logIndex:'1'}]:[];
