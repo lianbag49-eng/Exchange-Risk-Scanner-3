@@ -17,11 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 
 private val AppBg = Color(0xFF071018)
 private val Surface1 = Color(0xFF0D1822)
@@ -48,24 +50,29 @@ private val ErsColors = darkColorScheme(
     outline = Border
 )
 
-data class ExchangeOption(val name: String, val mark: String, val color: Color)
+data class ExchangeOption(
+    val name: String,
+    val mark: String,
+    val color: Color,
+    val logoUrl: String? = null
+)
 
 private val exchangeOptions = listOf(
-    ExchangeOption("Binance", "◆", Color(0xFFF3BA2F)),
-    ExchangeOption("Bybit", "BY", Color(0xFFF7A600)),
-    ExchangeOption("OKX", "OK", Color(0xFFF4F4F4)),
-    ExchangeOption("Bitget", "BG", Color(0xFF00D3B7)),
-    ExchangeOption("BingX", "BX", Color(0xFF2D7CFF)),
-    ExchangeOption("Toobit", "TB", Color(0xFF19C7B5)),
-    ExchangeOption("CoinW", "CW", Color(0xFF2A75FF)),
-    ExchangeOption("Deepcoin", "DC", Color(0xFF7258FF)),
-    ExchangeOption("Gate.io", "G", Color(0xFF17C6B3)),
-    ExchangeOption("MEXC", "M", Color(0xFF2F6BFF)),
-    ExchangeOption("KuCoin", "K", Color(0xFF23AF91)),
-    ExchangeOption("HTX", "H", Color(0xFF2B7FFF)),
-    ExchangeOption("LBank", "LB", Color(0xFF2D74FF)),
-    ExchangeOption("BitMart", "BM", Color(0xFF3464FF)),
-    ExchangeOption("OURBIT", "OB", Color(0xFF7C5CFF)),
+    ExchangeOption("Binance", "BN", Color(0xFFF3BA2F), "https://www.binance.com/favicon.ico"),
+    ExchangeOption("Bybit", "BY", Color(0xFFF7A600), "https://www.bybit.com/favicon.ico"),
+    ExchangeOption("OKX", "OK", Color.White, "https://www.okx.com/favicon.ico"),
+    ExchangeOption("Bitget", "BG", Color(0xFF00D3B7), "https://www.bitget.com/favicon.ico"),
+    ExchangeOption("BingX", "BX", Color(0xFF2D7CFF), "https://bingx.com/favicon.ico"),
+    ExchangeOption("Toobit", "TB", Color(0xFF19C7B5), "https://www.toobit.com/favicon.ico"),
+    ExchangeOption("CoinW", "CW", Color(0xFF2A75FF), "https://www.coinw.com/favicon.ico"),
+    ExchangeOption("Deepcoin", "DC", Color(0xFF7258FF), "https://www.deepcoin.com/favicon.ico"),
+    ExchangeOption("Gate.io", "GT", Color(0xFF17C6B3), "https://www.gate.com/favicon.ico"),
+    ExchangeOption("MEXC", "MX", Color(0xFF2F6BFF), "https://www.mexc.com/favicon.ico"),
+    ExchangeOption("KuCoin", "KC", Color(0xFF23AF91), "https://www.kucoin.com/favicon.ico"),
+    ExchangeOption("HTX", "HX", Color(0xFF2B7FFF), "https://www.htx.com/favicon.ico"),
+    ExchangeOption("LBank", "LB", Color(0xFF2D74FF), "https://www.lbank.com/favicon.ico"),
+    ExchangeOption("BitMart", "BM", Color(0xFF3464FF), "https://www.bitmart.com/favicon.ico"),
+    ExchangeOption("OURBIT", "OB", Color(0xFF7C5CFF), "https://www.ourbit.com/favicon.ico"),
     ExchangeOption("Tabit", "TA", Color(0xFF39B5FF)),
     ExchangeOption("MGBX", "MG", Color(0xFFFF8A3D)),
     ExchangeOption("기타 (직접 입력)", "+", Gold)
@@ -76,6 +83,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.rgb(7, 16, 24)
         window.navigationBarColor = android.graphics.Color.rgb(7, 16, 24)
+
         setContent {
             MaterialTheme(colorScheme = ErsColors) {
                 Surface(modifier = Modifier.fillMaxSize(), color = AppBg) {
@@ -88,7 +96,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun RiskScannerScreen() {
-        var selectedExchange by remember { mutableStateOf(exchangeOptions[5]) }
+        var selectedExchange by remember { mutableStateOf(exchangeOptions[0]) }
         var customExchange by remember { mutableStateOf("") }
         var exchangeExpanded by remember { mutableStateOf(false) }
         var accountId by remember { mutableStateOf("") }
@@ -96,7 +104,9 @@ class MainActivity : ComponentActivity() {
         var snapshot by remember { mutableStateOf<DeviceSnapshot?>(null) }
         var result by remember { mutableStateOf<RiskResult?>(null) }
 
-        val exchangeName = if (selectedExchange.name.startsWith("기타")) customExchange.ifBlank { "직접 입력" } else selectedExchange.name
+        val exchangeName = if (selectedExchange.name.startsWith("기타")) {
+            customExchange.ifBlank { "직접 입력" }
+        } else selectedExchange.name
 
         Column(
             modifier = Modifier
@@ -111,18 +121,37 @@ class MainActivity : ComponentActivity() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             PremiumHeader()
-            OverviewCard(exchangeName, accountId, result)
+            OverviewCard(selectedExchange, exchangeName, accountId, result)
 
-            Text("EXCHANGE ACCOUNT", color = GoldSoft, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp)
+            Text(
+                "EXCHANGE ACCOUNT",
+                color = GoldSoft,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.4.sp
+            )
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = Surface1),
                 shape = RoundedCornerShape(22.dp),
-                modifier = Modifier.fillMaxWidth().border(1.dp, Border, RoundedCornerShape(22.dp))
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Border, RoundedCornerShape(22.dp))
             ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text("거래소 계정 설정", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("거래소를 직접 입력하지 않고 목록에서 선택할 수 있습니다.", color = TextSecondary, fontSize = 13.sp)
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        "거래소 계정 설정",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "목록에서 거래소를 선택하거나 직접 입력할 수 있습니다.",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
 
                     ExposedDropdownMenuBox(
                         expanded = exchangeExpanded,
@@ -133,11 +162,16 @@ class MainActivity : ComponentActivity() {
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("거래소") },
-                            leadingIcon = { ExchangeMark(selectedExchange) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = exchangeExpanded) },
+                            leadingIcon = { ExchangeMark(selectedExchange, 34) },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = exchangeExpanded)
+                            },
                             colors = premiumFieldColors(),
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
                         )
+
                         ExposedDropdownMenu(
                             expanded = exchangeExpanded,
                             onDismissRequest = { exchangeExpanded = false },
@@ -146,9 +180,25 @@ class MainActivity : ComponentActivity() {
                             exchangeOptions.forEach { option ->
                                 DropdownMenuItem(
                                     text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            ExchangeMark(option)
-                                            Text(option.name, color = TextPrimary)
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            ExchangeMark(option, 36)
+                                            Column {
+                                                Text(
+                                                    option.name,
+                                                    color = TextPrimary,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                if (option.logoUrl != null) {
+                                                    Text(
+                                                        "공식 사이트 로고",
+                                                        color = TextSecondary,
+                                                        fontSize = 10.sp
+                                                    )
+                                                }
+                                            }
                                         }
                                     },
                                     onClick = {
@@ -197,23 +247,28 @@ class MainActivity : ComponentActivity() {
                             snapshot = s
                             result = RiskEngine.evaluate(s, kycCountry)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = AppBg),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Gold,
+                            contentColor = AppBg
+                        ),
                         shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth().height(54.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
                     ) {
-                        Text("SCAN RISK", fontWeight = FontWeight.ExtraBold, letterSpacing = 1.1.sp)
+                        Text(
+                            "SCAN RISK",
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.1.sp
+                        )
                     }
                 }
             }
 
-            result?.let { r ->
-                RiskResultCard(r)
-            }
+            result?.let { RiskResultCard(it) }
+            snapshot?.let { EnvironmentCard(it) }
 
-            snapshot?.let { s ->
-                EnvironmentCard(s)
-            }
-
+            SupportedExchangesCard()
             SecurityNote()
             BottomNavigationMock()
             Spacer(Modifier.height(8.dp))
@@ -222,20 +277,49 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun PremiumHeader() {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
-                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF111A21)).border(1.dp, Gold.copy(alpha = 0.6f), RoundedCornerShape(16.dp)),
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(Color(0xFF17120A), Color(0xFF0E1720))
+                        )
+                    )
+                    .border(1.dp, Gold.copy(alpha = 0.7f), RoundedCornerShape(17.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Text("ERS", color = GoldSoft, fontWeight = FontWeight.Black, fontSize = 14.sp)
             }
+
             Spacer(Modifier.width(12.dp))
+
             Column(Modifier.weight(1f)) {
-                Text("ERS", color = GoldSoft, fontWeight = FontWeight.Black, fontSize = 22.sp, letterSpacing = 2.sp)
-                Text("EXCHANGE RISK SCANNER", color = TextSecondary, fontSize = 10.sp, letterSpacing = 1.4.sp)
+                Text(
+                    "ERS",
+                    color = GoldSoft,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 22.sp,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    "EXCHANGE RISK SCANNER",
+                    color = TextSecondary,
+                    fontSize = 10.sp,
+                    letterSpacing = 1.4.sp
+                )
             }
+
             Box(
-                modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Success.copy(alpha = 0.10f)).border(1.dp, Success.copy(alpha = 0.35f), RoundedCornerShape(20.dp)).padding(horizontal = 10.dp, vertical = 6.dp)
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Success.copy(alpha = 0.10f))
+                    .border(1.dp, Success.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text("SECURE", color = Success, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
@@ -243,7 +327,12 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun OverviewCard(exchangeName: String, uid: String, result: RiskResult?) {
+    private fun OverviewCard(
+        exchange: ExchangeOption,
+        exchangeName: String,
+        uid: String,
+        result: RiskResult?
+    ) {
         val level = result?.level ?: "READY"
         val accent = when (level) {
             "HIGH" -> Danger
@@ -251,26 +340,55 @@ class MainActivity : ComponentActivity() {
             "LOW" -> Success
             else -> Gold
         }
+
         Card(
             colors = CardDefaults.cardColors(containerColor = Surface1),
             shape = RoundedCornerShape(22.dp),
-            modifier = Modifier.fillMaxWidth().border(1.dp, Border, RoundedCornerShape(22.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Border, RoundedCornerShape(22.dp))
         ) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(
+                Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Overall Risk Level", color = TextSecondary, fontSize = 12.sp)
-                        Text(level, color = accent, fontSize = 30.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        Text(
+                            level,
+                            color = accent,
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp
+                        )
                     }
+
                     Box(
-                        modifier = Modifier.size(64.dp).clip(CircleShape).background(accent.copy(alpha = 0.10f)).border(1.dp, accent.copy(alpha = 0.4f), CircleShape),
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(accent.copy(alpha = 0.10f))
+                            .border(1.dp, accent.copy(alpha = 0.4f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(result?.score?.toString() ?: "—", color = accent, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                        Text(
+                            result?.score?.toString() ?: "—",
+                            color = accent,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 22.sp
+                        )
                     }
                 }
+
                 HorizontalDivider(color = Border)
-                Row(modifier = Modifier.fillMaxWidth()) {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ExchangeMark(exchange, 38)
+                    Spacer(Modifier.width(10.dp))
                     InfoMini("Exchange", exchangeName, Modifier.weight(1f))
                     InfoMini("UID", uid.ifBlank { "미입력" }, Modifier.weight(1f))
                     InfoMini("Mode", "Device", Modifier.weight(1f))
@@ -283,7 +401,14 @@ class MainActivity : ComponentActivity() {
     private fun InfoMini(label: String, value: String, modifier: Modifier = Modifier) {
         Column(modifier, horizontalAlignment = Alignment.Start) {
             Text(label, color = TextSecondary, fontSize = 10.sp)
-            Text(value, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                value,
+                color = TextPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 
@@ -294,35 +419,75 @@ class MainActivity : ComponentActivity() {
             "MEDIUM" -> Warning
             else -> Success
         }
+
         Card(
             colors = CardDefaults.cardColors(containerColor = Surface1),
             shape = RoundedCornerShape(22.dp),
-            modifier = Modifier.fillMaxWidth().border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(22.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, accent.copy(alpha = 0.30f), RoundedCornerShape(22.dp))
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("RISK ANALYSIS", color = GoldSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                        Text("리스크 점수 ${r.score}/100", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "RISK ANALYSIS",
+                            color = GoldSoft,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp
+                        )
+                        Text(
+                            "리스크 점수 ${r.score}/100",
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    Box(Modifier.clip(RoundedCornerShape(12.dp)).background(accent.copy(alpha = 0.12f)).padding(horizontal = 12.dp, vertical = 7.dp)) {
-                        Text(r.level, color = accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(accent.copy(alpha = 0.12f))
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                    ) {
+                        Text(
+                            r.level,
+                            color = accent,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                     }
                 }
+
                 r.signals.forEach { signal ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Surface2).padding(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Surface2)
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(8.dp).clip(CircleShape).background(if (signal.triggered) Danger else Success)
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (signal.triggered) Danger else Success)
                         )
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(signal.label, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             Text(signal.value, color = TextSecondary, fontSize = 11.sp)
                         }
-                        Text(if (signal.triggered) "+${signal.points}" else "OK", color = if (signal.triggered) Danger else Success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(
+                            if (signal.triggered) "+${signal.points}" else "OK",
+                            color = if (signal.triggered) Danger else Success,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
@@ -334,10 +499,21 @@ class MainActivity : ComponentActivity() {
         Card(
             colors = CardDefaults.cardColors(containerColor = Surface1),
             shape = RoundedCornerShape(22.dp),
-            modifier = Modifier.fillMaxWidth().border(1.dp, Border, RoundedCornerShape(22.dp))
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Border, RoundedCornerShape(22.dp))
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("DEVICE ENVIRONMENT", color = GoldSoft, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "DEVICE ENVIRONMENT",
+                    color = GoldSoft,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
                 EnvRow("국가", s.deviceCountry.ifBlank { "-" })
                 EnvRow("시간대", s.timezoneId)
                 EnvRow("언어", s.locale)
@@ -349,25 +525,104 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun EnvRow(label: String, value: String) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(label, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.width(92.dp))
-            Text(value, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            Text(
+                value,
+                color = TextPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End
+            )
+        }
+    }
+
+    @Composable
+    private fun SupportedExchangesCard() {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Surface1),
+            shape = RoundedCornerShape(22.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Border, RoundedCornerShape(22.dp))
+        ) {
+            Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "SUPPORTED EXCHANGES",
+                    color = GoldSoft,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
+                Text(
+                    "공식 사이트 로고를 불러오며, 연결 실패 시 거래소 약칭이 표시됩니다.",
+                    color = TextSecondary,
+                    fontSize = 11.sp
+                )
+
+                exchangeOptions.filterNot { it.name.startsWith("기타") }.chunked(4).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        row.forEach { option ->
+                            Column(
+                                modifier = Modifier.width(68.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                ExchangeMark(option, 42)
+                                Spacer(Modifier.height(5.dp))
+                                Text(
+                                    option.name,
+                                    color = TextSecondary,
+                                    fontSize = 9.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        repeat(4 - row.size) { Spacer(Modifier.width(68.dp)) }
+                    }
+                }
+            }
         }
     }
 
     @Composable
     private fun SecurityNote() {
         Box(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Gold.copy(alpha = 0.07f)).border(1.dp, Gold.copy(alpha = 0.18f), RoundedCornerShape(16.dp)).padding(14.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Gold.copy(alpha = 0.07f))
+                .border(1.dp, Gold.copy(alpha = 0.18f), RoundedCornerShape(16.dp))
+                .padding(14.dp)
         ) {
-            Text("ERS는 내부 디바이스·계정 환경 자가 점검용입니다. 거래소의 비공개 탐지 규칙을 추정하거나 우회하는 기능은 포함하지 않습니다.", color = TextSecondary, fontSize = 11.sp, lineHeight = 17.sp)
+            Text(
+                "ERS는 내부 디바이스·계정 환경 자가 점검용입니다. 거래소의 비공개 탐지 규칙을 추정하거나 우회하는 기능은 포함하지 않습니다.",
+                color = TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 17.sp
+            )
         }
     }
 
     @Composable
     private fun BottomNavigationMock() {
         Row(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Surface1).border(1.dp, Border, RoundedCornerShape(20.dp)).padding(vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Surface1)
+                .border(1.dp, Border, RoundedCornerShape(20.dp))
+                .padding(vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             BottomItem("HOME", false)
@@ -380,20 +635,50 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun BottomItem(label: String, active: Boolean) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(6.dp).clip(CircleShape).background(if (active) Gold else Color.Transparent))
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(if (active) Gold else Color.Transparent)
+            )
             Spacer(Modifier.height(5.dp))
-            Text(label, color = if (active) GoldSoft else TextSecondary, fontSize = 9.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+            Text(
+                label,
+                color = if (active) GoldSoft else TextSecondary,
+                fontSize = 9.sp,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+            )
         }
     }
 
     @Composable
-    private fun ExchangeMark(option: ExchangeOption) {
-        val textColor = if (option.name == "OKX") AppBg else Color.White
+    private fun ExchangeMark(option: ExchangeOption, size: Int) {
         Box(
-            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(option.color.copy(alpha = if (option.name == "OKX") 1f else 0.92f)),
+            modifier = Modifier
+                .size(size.dp)
+                .clip(RoundedCornerShape((size / 3).dp))
+                .background(option.color.copy(alpha = 0.18f))
+                .border(1.dp, option.color.copy(alpha = 0.35f), RoundedCornerShape((size / 3).dp)),
             contentAlignment = Alignment.Center
         ) {
-            Text(option.mark, color = textColor, fontWeight = FontWeight.Black, fontSize = if (option.mark.length > 1) 10.sp else 15.sp)
+            Text(
+                option.mark,
+                color = option.color,
+                fontWeight = FontWeight.Black,
+                fontSize = if (size >= 40) 11.sp else 9.sp
+            )
+
+            option.logoUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = "${option.name} logo",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(5.dp)
+                        .clip(RoundedCornerShape((size / 4).dp))
+                )
+            }
         }
     }
 
