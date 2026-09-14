@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ExchangeRiskScanner"
 include(":app")
+// Trigger GitHub Actions APK build
