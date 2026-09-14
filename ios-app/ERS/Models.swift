@@ -33,7 +33,7 @@ final class ERSStore: ObservableObject {
     @Published var strictMode = false
     @Published var showTips = true
 
-    let exchanges = ["Binance","Bybit","OKX","Bitget","BingX","Toobit","CoinW","Deepcoin","Gate.io","MEXC","KuCoin","LBank","OURBIT","Tabit","MGBX","기타 거래소"]
+    let exchanges = ["Binance","Bybit","OKX","Bitget","BingX","Toobit","CoinW","Deepcoin","Gate.io","MEXC","KuCoin","LBank","OURBIT","Tapbit","MGBX","기타 거래소"]
         .map { Exchange(name: $0, mark: String($0.prefix(2)).uppercased()) }
 
     func scan(exchange: Exchange, uid: String, country: String) -> ScanRecord {
