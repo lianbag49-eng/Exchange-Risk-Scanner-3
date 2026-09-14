@@ -14,3 +14,5 @@ Implemented: Hyperliquid spot and perpetual metadata, candles, volume, bid/ask d
 Market data: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api
 Order schema: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint
 SDK: @nktkas/hyperliquid 0.33.3 (community SDK, MIT). Browser wallet: viem. Chart rendering: TradingView Lightweight Charts (Apache-2.0), with attribution and bundled notices.
+
+Integrated concurrent updates: encrypted Android records using the existing Android Keystore identity, worker entry, nullable network validation and device model, preserved iOS Keychain/selection fixes, and 1-second rendering of real trade ticks. Candle intervals are 1 minute and above; no fabricated 1-second candles. npm audit --omit=dev reported zero vulnerabilities on 2026-09-14; this is not an independent audit.

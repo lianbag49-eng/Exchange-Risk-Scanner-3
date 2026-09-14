@@ -2,3 +2,9 @@ qorvexa-dex/node_modules/
 qorvexa-dex/dist/
 qorvexa-dex/test-results/
 qorvexa-dex/playwright-report/
+node_modules/
+test-results/
+public/
+qorvexa-dex/trading.bundle.js
+android-app/.gradle/
+**/build/

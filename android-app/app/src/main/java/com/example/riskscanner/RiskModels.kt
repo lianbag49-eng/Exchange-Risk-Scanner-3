@@ -15,5 +15,6 @@ data class DeviceSnapshot(
     val secureLockScreen: Boolean,
     val securityPatch: String,
     val proxyConfigured: Boolean = false,
-    val networkValidated: Boolean = false
+    val networkValidated: Boolean? = null,
+    val deviceModel: String = ""
 )

@@ -5,3 +5,5 @@
 :root{--violet:#d9b56d;--cyan:#54dfa0}.hero{background:linear-gradient(130deg,#282013,#0a1510);border-color:#65532e}.logo{color:#f2d89e;border-color:#d9b56d;background:#211b12}.section-title,.eyebrow{color:#e6be72}.primary{background:linear-gradient(100deg,#efd18d,#b88c42);color:#13100a}.nav button.active{background:#d9b56d18;color:#f2d89e}.attribution{color:#dbc58f}.top .testnet{color:#ead397;border-color:#d9b56d55;background:#d9b56d15}
 
 body{background:radial-gradient(ellipse at 70% 0,#29251966 0,transparent 35%),#080d0b}@media(max-width:720px){.book-panel #bids,.book-panel #asks{display:block;width:100%}.book-panel #bookMid{display:block}}
+
+#marketClock{color:var(--muted);font-size:10px}.recent-trades{font-size:10px;color:var(--muted)}.recent-trades .pair{padding:5px 0}

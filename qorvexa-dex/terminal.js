@@ -10,6 +10,7 @@ const CHAIN='0x66eee';
 const validAddress=x=>/^0x[0-9a-fA-F]{40}$/.test(x||'');
 const numeric=x=>typeof x==='string'&&/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(x)&&Number.isFinite(Number(x))&&Number(x)>0;
 const fmt=(n,max=4)=>Number.isFinite(Number(n))?Number(n).toLocaleString('en-US',{maximumFractionDigits:max}):'—';
+const canonical=s=>s.includes('.')?s.replace(/0+$/,'').replace(/\.$/,''):s;
 const money=n=>Number.isFinite(Number(n))?Number(n).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}):'—';
 const marketPrice=n=>'$'+fmt(n,8);
 const errorText=e=>String(e?.shortMessage||e?.message||e||'알 수 없는 오류').slice(0,260);
@@ -36,9 +37,10 @@ function disconnect(){address=null;wallet=null;accountEpoch++;invalidate();clear
 const chart=createChart($('chart'),{autoSize:true,layout:{background:{color:'#0b131f'},textColor:'#a0aec0',attributionLogo:true},grid:{vertLines:{color:'#172334'},horzLines:{color:'#172334'}},rightPriceScale:{borderColor:'#26384d'},timeScale:{timeVisible:true,borderColor:'#26384d'},crosshair:{mode:0}});
 const candles=chart.addSeries(CandlestickSeries,{upColor:'#54dfa0',downColor:'#ff6678',borderVisible:false,wickUpColor:'#54dfa0',wickDownColor:'#ff6678'});
 const volumes=chart.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceScaleId:'volume',lastValueVisible:false,priceLineVisible:false});chart.priceScale('volume').applyOptions({scaleMargins:{top:0.84,bottom:0}});
+let tradeBuffer=[],latestTrade=null;
 let initialChart=true,streamLatest=null,socket=null,reconnectTimer=null,heartbeat=null,lastStreamBook=0;
 async function loadMarkets(){
- const epoch=++marketEpoch,net=network,type=kind;stopStream();invalidate();market=null;book=null;bookAt=0;
+ const epoch=++marketEpoch,net=network,type=kind;stopStream();tradeBuffer=[];latestTrade=null;$('marketTrades').textContent='체결 데이터 대기 중';invalidate();market=null;book=null;bookAt=0;
  $('market').replaceChildren(new Option('불러오는 중…',''));$('lastPrice').textContent='—';$('marketChange').textContent='24H —';$('feedState').textContent='시장 연결 중';
  for(const id of ['asks','bids','bookMid','bidDepth','askDepth','spread'])$(id).textContent='—';candles.setData([]);volumes.setData([]);
  try{
@@ -60,7 +62,7 @@ async function loadMarkets(){
  }catch(e){if(epoch!==marketEpoch)return;markets=[];$('market').replaceChildren(new Option('조회 실패',''));$('feedState').textContent='연결 실패 · '+errorText(e);$('chartStatus').textContent='시장 데이터를 불러오지 못했습니다.';}
 }
 function selectMarket(){
- marketEpoch++;stopStream();streamLatest=null;invalidate();market=markets.find(m=>String(m.id)===$('market').value);book=null;bookAt=0;initialChart=true;
+ marketEpoch++;stopStream();streamLatest=null;tradeBuffer=[];latestTrade=null;$('marketTrades').textContent='체결 데이터 대기 중';invalidate();market=markets.find(m=>String(m.id)===$('market').value);book=null;bookAt=0;initialChart=true;
  candles.setData([]);volumes.setData([]);$('asks').replaceChildren();$('bids').replaceChildren();$('bookMid').textContent='—';
  if(!market)return;
  const px=Number(market.ctx.markPx),prev=Number(market.ctx.prevDayPx);$('lastPrice').textContent=marketPrice(px);
@@ -81,7 +83,7 @@ async function loadBook(){
  finally{if(epoch===marketEpoch)loadingBook=false;}
 }
 function applyBook(b,m,net,streaming=false){
-  if(b.coin!==m.coin||!Array.isArray(b.levels)||b.levels.length!==2||!Number.isFinite(b.time)||Date.now()-b.time>15000||b.time-Date.now()>10000)throw Error('오래됐거나 유효하지 않은 호가');
+  if(b.coin!==m.coin||!Array.isArray(b.levels)||b.levels.length!==2||!Number.isFinite(b.time)||Date.now()-b.time>10000||b.time-Date.now()>10000)throw Error('오래됐거나 유효하지 않은 호가');
   if(b.levels.some(side=>!Array.isArray(side)||side.some(l=>!(Number(l.px)>0&&Number(l.sz)>0))))throw Error('호가 형식 오류');
   book=b;bookAt=Date.now();
   for(const [id,levels,color] of [['bids',b.levels[0],'green'],['asks',b.levels[1],'red']]){
@@ -108,7 +110,7 @@ async function loadChart(){
   volumes.setData(cs.map(c=>({time:Math.floor(c.t/1000),value:+c.v,color:+c.c>=+c.o?'#54dfa03d':'#ff66783d'})));
   if(initialChart&&cs.length){chart.timeScale().fitContent();initialChart=false;}
   $('chartStatus').textContent=cs.length?`${net.toUpperCase()} · ${cs.length}개 봉 · 조회 ${new Date().toLocaleTimeString()} · 최근 봉 ${new Date(cs.at(-1).t).toLocaleString()}`:'이 시장의 해당 구간에 캔들이 없습니다.';
-  if(cs.length)$('lastPrice').textContent=marketPrice(cs.at(-1).c);
+  if(cs.length&&!latestTrade)$('lastPrice').textContent=marketPrice(cs.at(-1).c);
  }catch(e){if(epoch===marketEpoch)$('chartStatus').textContent='차트 갱신 실패 · '+errorText(e);}
  finally{if(epoch===marketEpoch)loadingChart=false;}
 }
@@ -121,7 +123,7 @@ function startStream(){
  const ws=new WebSocket(API[net].replace('https://','wss://')+'/ws');socket=ws;
  ws.onopen=()=>{
   if(epoch!==marketEpoch||socket!==ws)return;
-  for(const subscription of [{type:'l2Book',coin:m.coin},{type:'candle',coin:m.coin,interval}])ws.send(JSON.stringify({method:'subscribe',subscription}));
+  for(const subscription of [{type:'l2Book',coin:m.coin},{type:'candle',coin:m.coin,interval},{type:'trades',coin:m.coin}])ws.send(JSON.stringify({method:'subscribe',subscription}));
   heartbeat=setInterval(()=>{if(ws.readyState===1)ws.send(JSON.stringify({method:'ping'}))},25000);
  };
  ws.onmessage=e=>{
@@ -129,12 +131,17 @@ function startStream(){
   try{
    const msg=JSON.parse(e.data);
    if(msg.channel==='l2Book'&&msg.data?.coin===m.coin){applyBook(msg.data,m,net,true);lastStreamBook=Date.now();}
+   if(msg.channel==='trades'&&Array.isArray(msg.data)){
+    const valid=msg.data.filter(t=>t.coin===m.coin&&Number.isFinite(t.time)&&Number(t.px)>0&&Number(t.sz)>0);
+    tradeBuffer=[...new Map([...tradeBuffer,...valid].map(t=>[t.tid??(t.time+':'+t.px+':'+t.sz),t])).values()].sort((a,b)=>a.time-b.time).slice(-12);
+    latestTrade=tradeBuffer.at(-1)||null;
+   }
    if(msg.channel==='candle'){
     const c=msg.data;if(c?.s!==m.coin||c.i!==interval||!Number.isFinite(c.t)||[c.o,c.h,c.l,c.c].some(v=>!(Number(v)>0))||!(Number(c.v)>=0)||Number(c.h)<Math.max(+c.o,+c.c,+c.l)||Number(c.l)>Math.min(+c.o,+c.c))return;
     if(streamLatest&&c.t<streamLatest.t)return;streamLatest=c;
     candles.update({time:Math.floor(c.t/1000),open:+c.o,high:+c.h,low:+c.l,close:+c.c});
     volumes.update({time:Math.floor(c.t/1000),value:+c.v,color:+c.c>=+c.o?'#54dfa03d':'#ff66783d'});
-    $('lastPrice').textContent=marketPrice(c.c);$('chartStatus').textContent=net.toUpperCase()+' · 실시간 캔들 · '+new Date().toLocaleTimeString();
+    if(!latestTrade)$('lastPrice').textContent=marketPrice(c.c);$('chartStatus').textContent=net.toUpperCase()+' · 실시간 캔들 · '+new Date().toLocaleTimeString();
    }
   }catch{ /* REST polling remains active if a stream packet is malformed. */ }
  };
@@ -227,10 +234,10 @@ function makeReview(){
  if(network!=='testnet')throw Error('메인넷은 조회 전용입니다');
  if(!address||!wallet)throw Error('테스트넷 지갑을 먼저 연결하세요');
  if(uncertain)throw Error('이전 주문 결과를 먼저 확인하세요. 계정 새로고침 후 다시 시도하세요.');
- if(!market||!book||Date.now()-bookAt>10000)throw Error('최신 호가를 확인할 수 없습니다');
+ if(!market||!book||Date.now()-bookAt>5000)throw Error('최신 호가를 확인할 수 없습니다');
  if(!accountData||Date.now()-accountAt>30000)throw Error('계정 새로고침 후 다시 확인하세요');
  const raw=$('orderSize').value.trim();if(!numeric(raw))throw Error('올바른 수량을 입력하세요');
- const size=formatSize(raw,market.sz);if(Number(size)!==Number(raw))throw Error(`수량은 소수점 ${market.sz}자리 이내로 입력하세요`);
+ const size=formatSize(raw,market.sz);if(size!==canonical(raw))throw Error(`수량은 소수점 ${market.sz}자리 이내로 입력하세요`);
  const isMarket=$('orderType').value==='market';let price;
  if(isMarket){
   const slip=Number($('marketSlippage').value);if(!Number.isFinite(slip)||slip<0.1||slip>5)throw Error('가격 허용폭은 0.1~5%입니다');
@@ -244,7 +251,7 @@ function makeReview(){
  }else{
   if(!numeric($('limitPrice').value.trim()))throw Error('올바른 지정 가격을 입력하세요');
   price=formatPrice($('limitPrice').value.trim(),market.sz,kind);
-  if(Number(price)!==Number($('limitPrice').value))throw Error('가격 정밀도를 줄여 주세요. 허용 가격 예: '+price);
+  if(price!==canonical($('limitPrice').value.trim()))throw Error('가격 정밀도를 줄여 주세요. 허용 가격 예: '+price);
  }
  const notional=Number(price)*Number(size);if(!Number.isFinite(notional)||notional<10)throw Error('최소 주문 명목가는 10 USDC입니다');
  const reduce=kind==='perp'&&$('reduceOnly').checked;const lev=Number($('leverage').value);
@@ -270,7 +277,7 @@ $('orderDialog').addEventListener('cancel',e=>{if(busy)e.preventDefault();else r
 $('submitOrder').onclick=async()=>{
  if(busy||!review)return;busy=true;$('submitOrder').disabled=true;const r=review;review=null;let leverageDone=false;
  try{
-  await guard(r);if(Date.now()-bookAt>10000)throw Error('호가가 지연됐습니다. 다시 확인하세요');
+  await guard(r);if(Date.now()-bookAt>5000)throw Error('호가가 지연됐습니다. 다시 확인하세요');
   const client=clientFor(r);
   if(r.kind==='perp'&&!r.reduce){$('submitState').textContent='교차 레버리지 설정을 지갑에서 확인하세요.';await client.updateLeverage({asset:r.market.id,isCross:true,leverage:r.lev},{expiresAfter:r.expires});leverageDone=true;}
   $('submitState').textContent='주문 서명을 지갑에서 확인하세요.';
@@ -302,7 +309,15 @@ async function cancelOrder(o){
 }
 setInterval(()=>{if(!document.hidden)loadBook()},3000);
 setInterval(()=>{if(!document.hidden){loadChart();loadAccount()}},15000);
-setInterval(()=>{if(bookAt&&Date.now()-bookAt>10000)$('feedState').textContent='호가 지연 · 주문 일시 중지'},1000);
+setInterval(()=>{
+ if(document.hidden)return;
+ $('marketClock').textContent=new Date().toLocaleTimeString()+' · 표시 갱신 1초';
+ if(bookAt&&Date.now()-bookAt>5000)$('feedState').textContent='호가 지연 · 주문 일시 중지';
+ if(latestTrade){
+  $('lastPrice').textContent=marketPrice(latestTrade.px);
+  $('marketTrades').replaceChildren(...tradeBuffer.slice(-6).reverse().map(t=>row(new Date(t.time).toLocaleTimeString()+' · '+fmt(t.px,8)+' × '+fmt(t.sz,6))));
+ }
+},1000);
 document.addEventListener('visibilitychange',()=>{stopStream();if(!document.hidden){loadBook();loadChart();loadAccount();startStream()}});
 window.addEventListener('pagehide',stopStream);
 window.addEventListener('pageshow',e=>{if(e.persisted){loadBook();loadChart();loadAccount();startStream()}});

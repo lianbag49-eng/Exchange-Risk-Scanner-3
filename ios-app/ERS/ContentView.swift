@@ -20,6 +20,7 @@ struct ContentView: View {
             LinearGradient(colors:[Color(red:00.035,green:00.08,blue:00.12),bg,Color.black],startPoint:.top,endPoint:.bottom).ignoresSafeArea()
             VStack(spacing:0) {
                 Header()
+                if !store.storageMessage.isEmpty { Notice(store.storageMessage,red) }
                 TabView(selection:$tab) {
                     HomeView(start:{ tab=1 }).tag(0)
                     ScanView().tag(1)
@@ -88,6 +89,9 @@ struct ScanView: View {
     @State private var uid=""
     @State private var country="KR"
     @State private var custom=""
+    @State private var worker=""
+    @State private var showExchanges=false
+    @State private var search=""
     @State private var error=""
     @State private var result:ScanRecord?
     var body:some View {
@@ -97,10 +101,23 @@ struct ScanView: View {
                 HStack(spacing:7){ForEach(0..<3){i in Capsule().fill(i < (result==nil ? 1:3) ? gold:line).frame(height:3)}}
                 LabelText("SCAN TARGET")
                 CardBox {
-                    Picker("거래소 선택",selection:$exchange){ForEach(store.exchanges){Text($0.name).tag($0)}}.pickerStyle(.menu).foregroundStyle(.white)
+                    Button { showExchanges=true } label: {
+                        HStack { Text(exchange.name); Spacer(); Image(systemName:"chevron.right") }
+                    }
+                    .sheet(isPresented:$showExchanges) {
+                        NavigationStack {
+                            List(store.exchanges.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }) { item in
+                                Button(item.name) { exchange=item; result=nil; showExchanges=false }
+                            }
+                            .searchable(text:$search,prompt:"거래소 검색")
+                            .navigationTitle("거래소 선택")
+                            .toolbar { ToolbarItem(placement:.topBarTrailing) { Button("닫기") { showExchanges=false } } }
+                        }.preferredColorScheme(.dark)
+                    }
                     Divider().background(line)
                     if exchange.name=="기타 거래소" { DarkField("거래소 이름",text:$custom) }
                     DarkField("거래소 UID",text:$uid)
+                    DarkField("작업자 (선택)",text:$worker)
                     DarkField("KYC 국가 코드",text:$country)
                     Text("이메일이 아닌 거래소 UID와 두 자리 국가 코드를 입력하세요.").font(.caption2).foregroundStyle(muted)
                 }
@@ -112,7 +129,7 @@ struct ScanView: View {
                     if name.isEmpty {error="거래소 이름을 입력해 주세요."}
                     else if uid.count<3 {error="거래소 UID를 3자 이상 입력해 주세요."}
                     else if country.count != 2 {error="KYC 국가 코드를 두 자리로 입력해 주세요."}
-                    else {error="";result=store.scan(exchange:Exchange(name:name,mark:exchange.mark),uid:uid,country:country)}
+                    else {error="";result=store.scan(exchange:Exchange(name:name,mark:exchange.mark),uid:uid,country:country,worker:worker)}
                 }.font(.system(size:14,weight:.black)).foregroundStyle(bg).frame(maxWidth:.infinity).padding().background(gold).clipShape(RoundedRectangle(cornerRadius:16))
                 if let result { InlineReport(result) }
             }.padding(.horizontal,18).padding(.bottom,16)
@@ -145,9 +162,9 @@ struct SettingsView:View {
             VStack(alignment:.leading,spacing:14) {
                 PageTitle("SETTINGS","ERS 작동 방식을 설정하세요")
                 LabelText("SCAN PREFERENCES")
-                CardBox {ToggleRow("세션 기록 보관","앱 종료 시 기록 삭제",$store.autoSave);ToggleRow("강화 분석 모드","민감한 보안 기준",$store.strictMode);ToggleRow("보안 도움말 표시","결과에 권장 조치",$store.showTips)}
+                CardBox {ToggleRow("보호된 저장소에 기록 보관","이 기기에 최대 200개 보관",$store.autoSave);ToggleRow("강화 분석 모드","민감한 보안 기준",$store.strictMode);ToggleRow("보안 도움말 표시","결과에 권장 조치",$store.showTips)}
                 LabelText("APP INFORMATION")
-                CardBox {InfoRow("Application","Exchange Risk Scanner");InfoRow("Version","1.5 iOS");InfoRow("Engine","ERS Device Guard");InfoRow("Data Mode","On-device only")}
+                CardBox {InfoRow("Application","Exchange Risk Scanner");InfoRow("Version","1.6 iOS");InfoRow("Engine","ERS Device Guard");InfoRow("Data Mode","On-device only")}
                 LabelText("PRIVACY & SECURITY")
                 Notice("스캔 데이터는 기기에서만 분석되며 입력한 UID 원문을 외부 서버로 전송하지 않습니다.",green)
             }.padding(.horizontal,18).padding(.bottom,16)
@@ -160,7 +177,7 @@ struct ReportView:View {
     @Environment(\.dismiss) var dismiss
     var body:some View {
         NavigationStack {
-            ScrollView {VStack(alignment:.leading,spacing:12){LabelText("SECURITY REPORT");Text(record.level+" · \(record.score)/100").font(.system(size:28,weight:.black)).foregroundStyle(levelColor(record.level));CardBox{InfoRow("Exchange",record.exchange.name);InfoRow("UID",maskUid(record.uid));InfoRow("KYC Country",record.country);InfoRow("Device Country",record.deviceCountry.isEmpty ? "-":record.deviceCountry)};LabelText("ANALYSIS");CardBox{ForEach(record.signals){SignalRow($0)}}}.padding(18)}
+            ScrollView {VStack(alignment:.leading,spacing:12){LabelText("SECURITY REPORT");Text(record.level+" · \(record.score)/100").font(.system(size:28,weight:.black)).foregroundStyle(levelColor(record.level));CardBox{InfoRow("Exchange",record.exchange.name);InfoRow("UID",maskUid(record.uid));InfoRow("작업자",record.worker.isEmpty ? "미지정":record.worker);InfoRow("KYC Country",record.country);InfoRow("Device Country",record.deviceCountry.isEmpty ? "-":record.deviceCountry)};LabelText("ANALYSIS");CardBox{ForEach(record.signals){SignalRow($0)}}}.padding(18)}
             .background(bg).toolbar{ToolbarItem(placement:.topBarTrailing){Button("완료"){dismiss()}}}
         }.preferredColorScheme(.dark)
     }
@@ -181,4 +198,4 @@ struct SignalRow:View{let s:RiskSignal;init(_ s:RiskSignal){self.s=s};var body:s
 struct RecordRow:View{let r:ScanRecord;let tap:()->Void;init(_ r:ScanRecord,_ tap:@escaping()->Void){self.r=r;self.tap=tap};var body:some View{Button(action:tap){HStack{ZStack{RoundedRectangle(cornerRadius:12).fill(gold.opacity(0.1));Text(r.exchange.mark).font(.caption).fontWeight(.black).foregroundStyle(gold2)}.frame(width:42,height:42);VStack(alignment:.leading){Text(r.exchange.name).fontWeight(.bold);Text("UID "+maskUid(r.uid)).font(.caption2).foregroundStyle(muted)};Spacer();VStack{Text("\(r.score)").font(.system(size:20,weight:.black));Text(r.level).font(.system(size:9,weight:.bold))}.foregroundStyle(levelColor(r.level))}}.buttonStyle(.plain).padding(14).background(panel).clipShape(RoundedRectangle(cornerRadius:18)).overlay(RoundedRectangle(cornerRadius:18).stroke(line))}}
 func Notice(_ s:String,_ c:Color)->some View{Text(s).font(.caption).foregroundStyle(c==red ? red:muted).padding(14).frame(maxWidth:.infinity,alignment:.leading).background(c.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(c.opacity(0.25)))}
 func levelColor(_ s:String?)->Color{s=="HIGH" ? red:s=="MEDIUM" ? amber:s=="LOW" ? green:gold}
-func maskUid(_ s:String)->String{s.count<=4 ? s:String(s.prefix(2))+String(repeating:"•",count:min(6,s.count-4))+String(s.suffix(2))}
+func maskUid(_ s:String)->String{s.count<=4 ? String(repeating:"•",count:s.count):String(s.prefix(2))+String(repeating:"•",count:min(6,s.count-4))+String(s.suffix(2))}

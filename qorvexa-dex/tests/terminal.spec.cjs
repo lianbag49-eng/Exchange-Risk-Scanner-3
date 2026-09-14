@@ -5,6 +5,7 @@ async function fixture(page,options={}){
  await page.routeWebSocket('wss://api.hyperliquid*.xyz/ws',ws=>{
   ws.onMessage(message=>{
    const x=JSON.parse(message);
+   if(options.trades&&x.subscription?.type==='trades')ws.send(JSON.stringify({channel:'trades',data:[{coin:x.subscription.coin,time:Date.now(),tid:1,px:'2605',sz:'0.3',side:'B'}]}));
    if(options.stream&&x.subscription?.type==='l2Book')ws.send(JSON.stringify({channel:'l2Book',data:{coin:x.subscription.coin,time:Date.now(),levels:[[{px:'2600',sz:'50',n:1}],[{px:'2601',sz:'50',n:1}]]}}));
   });
  });
@@ -78,3 +79,5 @@ test('terminal renders mobile without overflow',async({page})=>{await page.setVi
 test('websocket book updates the displayed depth',async({page})=>{await ready(page,{stream:true});await expect(page.locator('#feedState')).toContainText('실시간');await expect(page.locator('#bids')).toContainText('2,600');});
 test('expired review cannot sign',async({page})=>{const actions=await ready(page);await review(page);await page.evaluate(()=>{const now=Date.now;Date.now=()=>now()+61000});await page.locator('#submitOrder').click();await expect(page.locator('#submitState')).toContainText('만료');expect(actions).toHaveLength(0);expect(await page.evaluate(()=>window.signatures.length)).toBe(0);});
 test('failed market metadata clears previous market values',async({page})=>{await ready(page);await page.route('https://api.hyperliquid-testnet.xyz/info',r=>r.fulfill({status:503,body:'Unavailable'}));await page.locator('#marketType').selectOption('spot');await expect(page.locator('#feedState')).toContainText('실패');await expect(page.locator('#lastPrice')).toHaveText('—');await expect(page.locator('#market')).toHaveValue('');});
+
+test('trade ticks appear within one second and clear on market switch',async({page})=>{await ready(page,{trades:true});await expect(page.locator('#lastPrice')).toHaveText('$2,605',{timeout:2000});await expect(page.locator('#marketClock')).toContainText('1초');await expect(page.locator('#marketTrades')).toContainText('0.3');await page.locator('#market').selectOption('1');await expect(page.locator('#marketTrades')).toContainText('대기');});

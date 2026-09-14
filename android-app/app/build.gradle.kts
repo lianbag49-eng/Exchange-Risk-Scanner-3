@@ -9,8 +9,8 @@ android {
         applicationId = "com.example.riskscanner"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.6"
+        versionCode = 8
+        versionName = "1.7"
     }
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.15" }

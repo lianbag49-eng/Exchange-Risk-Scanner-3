@@ -23,9 +23,10 @@ class DeviceInspector(private val context: Context) {
         adbEnabled = setting(Settings.Global.ADB_ENABLED),
         secureLockScreen = (context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure,
         securityPatch = Build.VERSION.SECURITY_PATCH ?: "",
+        deviceModel = "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}",
         proxyConfigured = (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).defaultProxy != null,
         networkValidated = (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).let { cm ->
-            cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+            cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }
     )
 

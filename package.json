@@ -1,0 +1,16 @@
+{
+  "name": "beltrix-workspace",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix qorvexa-dex ci && npm --prefix qorvexa-dex run build",
+    "test": "npm --prefix qorvexa-dex test"
+  },
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.33.3",
+    "viem": "2.56.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "esbuild": "0.25.9"
+  }
+}
