@@ -19,12 +19,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser tests
+        run: npm install --no-save @playwright/test@1.51.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Validate JavaScript
+        run: node --check qorvexa-dex/app.js
+      - name: Test prototype
+        run: npx playwright test --config=qorvexa-dex/playwright.config.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qorvexa-test-results
+          path: test-results/
+      - name: Prepare web-only artifact
+        run: |
+          mkdir -p public/qorvexa-dex
+          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
       - uses: actions/configure-pages@v5
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: public
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
