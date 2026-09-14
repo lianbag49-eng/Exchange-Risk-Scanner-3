@@ -9,7 +9,7 @@ test('market selection loads spot metadata, candles, and shows failures',async({
  await page.goto('/qorvexa-dex/');await page.getByRole('button',{name:'Trade',exact:true}).click();
  await expect(page.locator('#marketPrice')).toHaveText('21');
  await expect(page.locator('html')).toHaveAttribute('lang','en');
- await expect(page.locator('.nav button')).toHaveText(['Trade','Practice','Settings']);
+ await expect(page.locator('.nav button')).toHaveText(['Assets','Trade','Discover','Settings']);
  expect(await page.locator('body').innerText()).not.toMatch(/[가-힣]/);
  await expect(page.locator('.depth')).not.toHaveAttribute('open','');
  await page.locator('.depth summary').click();

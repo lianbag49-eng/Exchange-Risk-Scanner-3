@@ -52,10 +52,7 @@ jobs:
           api-level: 29
           arch: x86_64
           disable-animations: true
-          script: |
-            cd android-app && gradle --no-daemon :app:connectedDebugAndroidTest
-            mkdir -p android-app/screenshots
-            adb pull /sdcard/Android/data/com.example.riskscanner/files/. android-app/screenshots/
+          script: bash android-app/scripts/verify-ui.sh
 
       - name: Upload UI evidence
         if: always()
@@ -87,5 +84,6 @@ jobs:
             echo "APK unchanged; nothing to commit."
           else
             git commit -m "Publish latest APK"
+            git pull --rebase origin main
             git push origin HEAD:main
           fi

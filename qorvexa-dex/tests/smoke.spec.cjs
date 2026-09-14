@@ -2,6 +2,7 @@
 const {test,expect}=require('@playwright/test');
 test('simulation validation, confirm, persistence and settings',async({page})=>{
  await page.goto('/qorvexa-dex/');
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Practice',exact:true}).click();
  await page.locator('#pay').fill('999');
  await page.locator('#swapBtn').click();
@@ -17,6 +18,7 @@ test('simulation validation, confirm, persistence and settings',async({page})=>{
  await expect(page.locator('#dialogTitle')).toHaveText('SIMULATION COMPLETE');
  await page.locator('#closeBtn').click();
  await page.reload();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Practice',exact:true}).click();
  await expect(page.locator('#activity')).toContainText('SIMULATED');
  await page.getByRole('button',{name:'Settings',exact:true}).click();
@@ -45,7 +47,7 @@ test('reject wrong chain and never send or sign',async({page})=>{
 test('mobile layout and navigation',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/qorvexa-dex/');
- for(const name of ['Trade','Practice','Settings']){
+ for(const name of ['Assets','Trade','Discover','Settings']){
  await page.getByRole('button',{name,exact:true}).click();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  expect(await page.locator('body').innerText()).not.toMatch(/[가-힣]/);

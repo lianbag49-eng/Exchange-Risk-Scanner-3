@@ -21,7 +21,7 @@ class ERSUiTest {
   screenshot("account")
   ui.onNodeWithText("선택 ›").performClick();screenshot("exchanges")
   ui.onNodeWithText("거래소 검색").performTextInput("Tapbit")
-  ui.onNodeWithText("Tapbit").performClick()
+  ui.onNodeWithContentDescription("Tapbit 로고").performClick()
   ui.onNodeWithText("거래소 UID").performScrollTo().performTextInput("123456789")
   ui.onNodeWithText("계정 추가 및 점검").performScrollTo().performClick()
   ui.onNodeWithText("스캔 결과").assertExists();screenshot("result")

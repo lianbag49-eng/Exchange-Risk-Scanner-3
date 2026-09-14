@@ -9,12 +9,14 @@ targets:
     platform: iOS
     sources:
       - ERS
+      - path: ../android-app/app/src/main/assets/exchanges.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ers.riskscanner
         PRODUCT_NAME: ERS
-        MARKETING_VERSION: 1.4
-        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.8
+        CURRENT_PROJECT_VERSION: 9
         SWIFT_VERSION: 5.0
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: ERS
