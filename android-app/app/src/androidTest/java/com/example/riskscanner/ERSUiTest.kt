@@ -13,6 +13,8 @@ class ERSUiTest {
  @get:Rule val ui=createAndroidComposeRule<MainActivity>()
  private fun screenshot(name:String){
   ui.waitForIdle()
+  InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+  android.os.SystemClock.sleep(300)
   val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
   fun shell(command:String){android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}}
   shell("mkdir -p /sdcard/Download/ers-ui")
