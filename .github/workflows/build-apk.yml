@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "codex/ers-hyperliquid" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-apk.yml"
@@ -38,7 +38,7 @@ jobs:
 
       - name: Build Debug APK
         working-directory: android-app
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -49,6 +49,7 @@ jobs:
           retention-days: 30
 
       - name: Publish APK to repository
+        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p downloads
           cp android-app/app/build/outputs/apk/debug/app-debug.apk downloads/Exchange-Risk-Scanner.apk

@@ -1,0 +1,151 @@
+[
+  {
+    "name": "Binance",
+    "url": "https://www.binance.com/favicon.ico",
+    "status": "UnidentifiedImageError"
+  },
+  {
+    "name": "Bybit",
+    "url": "https://www.bybit.com/favicon.ico",
+    "status": "UnidentifiedImageError"
+  },
+  {
+    "name": "Bitget",
+    "url": "https://www.bitget.com/favicon.ico",
+    "resource": "logo_bitget",
+    "status": "ok"
+  },
+  {
+    "name": "BingX",
+    "url": "https://bingx.com/favicon.ico",
+    "resource": "logo_bingx",
+    "status": "ok"
+  },
+  {
+    "name": "Toobit",
+    "url": "https://www.toobit.com/favicon.ico",
+    "resource": "logo_toobit",
+    "status": "ok"
+  },
+  {
+    "name": "CoinW",
+    "url": "https://www.coinw.com/favicon.ico",
+    "status": "HTTPError"
+  },
+  {
+    "name": "Deepcoin",
+    "url": "https://www.deepcoin.com/favicon.ico",
+    "resource": "logo_deepcoin",
+    "status": "ok"
+  },
+  {
+    "name": "Gate.io",
+    "url": "https://www.gate.com/favicon.ico",
+    "resource": "logo_gateio",
+    "status": "ok"
+  },
+  {
+    "name": "MEXC",
+    "url": "https://www.mexc.com/favicon.ico",
+    "status": "UnidentifiedImageError"
+  },
+  {
+    "name": "KuCoin",
+    "url": "https://www.kucoin.com/favicon.ico",
+    "status": "UnidentifiedImageError"
+  },
+  {
+    "name": "LBank",
+    "url": "https://www.lbank.com/favicon.ico",
+    "resource": "logo_lbank",
+    "status": "ok"
+  },
+  {
+    "name": "OURBIT",
+    "url": "https://www.ourbit.com/favicon.ico",
+    "status": "HTTPError"
+  },
+  {
+    "name": "Tapbit",
+    "url": "https://www.tapbit.com/favicon.ico",
+    "resource": "logo_tapbit",
+    "status": "ok"
+  },
+  {
+    "name": "HTX",
+    "url": "https://www.htx.com/favicon.ico",
+    "status": "HTTPError"
+  },
+  {
+    "name": "BitMart",
+    "url": "https://www.bitmart.com/favicon.ico",
+    "status": "TimeoutError"
+  },
+  {
+    "name": "Binance",
+    "status": "no_image"
+  },
+  {
+    "name": "Bybit",
+    "status": "no_image"
+  },
+  {
+    "name": "OKX",
+    "status": "TimeoutError"
+  },
+  {
+    "name": "CoinW",
+    "status": "HTTPError"
+  },
+  {
+    "name": "MEXC",
+    "status": "TimeoutError"
+  },
+  {
+    "name": "KuCoin",
+    "status": "TimeoutError"
+  },
+  {
+    "name": "OURBIT",
+    "url": "https://www.ourbit.com/sites/favicon.ico",
+    "resource": "logo_ourbit",
+    "status": "ok"
+  },
+  {
+    "name": "HTX",
+    "url": "https://www.htx.com/web-v4/static/favicon.ico",
+    "resource": "logo_htx",
+    "status": "ok"
+  },
+  {
+    "name": "BitMart",
+    "status": "TimeoutError"
+  },
+  {
+    "name": "MGBX",
+    "url": "https://www.mgbx.com/_next/static/favicon.ico",
+    "resource": "logo_mgbx",
+    "status": "ok"
+  },
+  {
+    "name": "Binance",
+    "source": "https://binance.com",
+    "assetProvider": "Simple Icons",
+    "resource": "logo_binance",
+    "status": "ok"
+  },
+  {
+    "name": "OKX",
+    "source": "https://commons.wikimedia.org/wiki/File:OKX_logo.svg",
+    "assetProvider": "Simple Icons",
+    "resource": "logo_okx",
+    "status": "ok"
+  },
+  {
+    "name": "KuCoin",
+    "source": "https://www.kucoin.com/news/en-kucoin-media-kit",
+    "assetProvider": "Simple Icons",
+    "resource": "logo_kucoin",
+    "status": "ok"
+  }
+]

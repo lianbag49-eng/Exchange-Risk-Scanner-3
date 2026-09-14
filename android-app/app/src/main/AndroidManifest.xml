@@ -4,6 +4,7 @@
 
     <application
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:icon="@drawable/ic_ers"
         android:roundIcon="@drawable/ic_ers"
         android:label="ERS"
