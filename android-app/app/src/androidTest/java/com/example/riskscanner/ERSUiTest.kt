@@ -11,7 +11,13 @@ import org.junit.Assert.*
 import java.io.File
 class ERSUiTest {
  @get:Rule val ui=createAndroidComposeRule<MainActivity>()
- private fun screenshot(name:String){ui.waitForIdle();val inst=InstrumentationRegistry.getInstrumentation();val file=File(inst.targetContext.getExternalFilesDir(null),"$name.png");file.outputStream().use{inst.uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG,100,it)}}
+ private fun screenshot(name:String){
+  ui.waitForIdle()
+  val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
+  fun shell(command:String){android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}}
+  shell("mkdir -p /sdcard/Download/ers-ui")
+  shell("screencap -p /sdcard/Download/ers-ui/$name.png")
+ }
  @Test fun offlineLogosAndAccountJourney(){
   val catalog=ExchangeCatalog.load(ui.activity);assertEquals(53,catalog.size);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
