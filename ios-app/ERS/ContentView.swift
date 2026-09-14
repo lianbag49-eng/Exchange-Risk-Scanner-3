@@ -28,7 +28,7 @@ struct ContentView: View {
                     SettingsView().tag(3)
                 }.tabViewStyle(.page(indexDisplayMode:.never))
                 HStack {
-                    Nav("HOME",0);Nav("SCAN",1);Nav("HISTORY",2);Nav("SETTINGS",3)
+                    Nav("HOME",0);Nav("SCAN",1);Nav("ALERTS",2);Nav("SETTINGS",3)
                 }.padding(8).background(panel.overlay(Rectangle().frame(height:1).foregroundStyle(line),alignment:.top))
             }
         }.tint(gold).foregroundStyle(.white)
@@ -36,7 +36,7 @@ struct ContentView: View {
     @ViewBuilder func Nav(_ title:String,_ index:Int)->some View {
         Button { tab=index } label: {
             VStack(spacing:5) {
-                Circle().fill(tab==index ? gold:line).frame(width:tab==index ? 7:5,height:tab==index ? 7:5)
+                Image(systemName:["house","magnifyingglass","bell","gearshape"][index]).font(.system(size:22)).foregroundStyle(tab==index ? gold:muted)
                 Text(title).font(.system(size:9,weight:tab==index ? .bold:.regular)).foregroundStyle(tab==index ? gold2:muted)
             }.frame(maxWidth:.infinity).padding(.vertical,7).background(tab==index ? gold.opacity(00.1):.clear).clipShape(RoundedRectangle(cornerRadius:13))
         }
@@ -44,42 +44,33 @@ struct ContentView: View {
 }
 
 struct Header: View {
-    var body: some View {
-        HStack {
-            ZStack { RoundedRectangle(cornerRadius:15).fill(LinearGradient(colors:[gold.opacity(0.25),panel2],startPoint:.topLeading,endPoint:.bottomTrailing));RoundedRectangle(cornerRadius:15).stroke(gold.opacity(0.7));Image(systemName:"shield.lefthalf.filled").font(.system(size:24,weight:.black)).foregroundStyle(gold2) }.frame(width:48,height:48)
-            VStack(alignment:.leading,spacing:1){Text("ERS").font(.system(size:21,weight:.black)).tracking(2).foregroundStyle(gold2);Text("EXCHANGE RISK SCANNER").font(.system(size:9)).tracking(1.2).foregroundStyle(muted)}
-            Spacer()
-            Text("DEVICE CHECK").font(.system(size:8,weight:.bold)).foregroundStyle(green).padding(.horizontal,9).padding(.vertical,6).background(green.opacity(0.09)).clipShape(Capsule()).overlay(Capsule().stroke(green.opacity(0.3)))
-        }.padding(.horizontal,18).padding(.vertical,12)
-    }
+ var body:some View { VStack(spacing:3){Text("ERS").font(.system(size:30,weight:.black)).tracking(3).foregroundStyle(gold2);Text("EXCHANGE RISK SCANNER").font(.system(size:9)).tracking(1.5).foregroundStyle(gold2)}.frame(maxWidth:.infinity).padding(.vertical,18) }
 }
 
 struct HomeView: View {
     @EnvironmentObject var store:ERSStore
     let start:()->Void
     @State private var selected:ScanRecord?
-    var latest:ScanRecord?{store.records.first}
+    var accounts:[ScanRecord] { var seen=Set<String>();return store.records.filter{seen.insert($0.exchange.name+":"+$0.uid).inserted} }
+    var latest:ScanRecord?{accounts.max{$0.score < $1.score}}
     var body:some View {
         ScrollView {
             VStack(alignment:.leading,spacing:14) {
-                Text("보안 상태를 한눈에 확인하세요").font(.system(size:24,weight:.black))
-                Text("거래소 계정과 현재 기기 환경을 점검합니다.").font(.system(size:13)).foregroundStyle(muted)
                 CardBox {
                     HStack {
-                        VStack(alignment:.leading){LabelText("CURRENT STATUS");Text(latest?.level ?? "READY").font(.system(size:34,weight:.black)).foregroundStyle(levelColor(latest?.level));Text(latest.map{$0.exchange.name+" · UID "+maskUid($0.uid)} ?? "첫 번째 보안 스캔을 시작하세요").font(.caption).foregroundStyle(muted)}
-                        Spacer();ScoreView(score:latest?.score,color:levelColor(latest?.level))
+                        VStack(alignment:.leading){LabelText("Overall Risk Level");Text(latest?.level ?? "READY").font(.system(size:34,weight:.black)).foregroundStyle(levelColor(latest?.level));Text(latest.map{$0.exchange.name+" · UID "+maskUid($0.uid)} ?? "첫 번째 보안 스캔을 시작하세요").font(.caption).foregroundStyle(muted)}
+                        Spacer();Image(systemName:"checkmark.shield").font(.system(size:60)).foregroundStyle(levelColor(latest?.level))
                     }
                     Divider().background(line)
                     Button(latest==nil ? "START SECURITY SCAN":"VIEW LATEST REPORT"){if let latest{selected=latest}else{start()}}.font(.system(size:14,weight:.black)).foregroundStyle(bg).frame(maxWidth:.infinity).padding().background(gold).clipShape(RoundedRectangle(cornerRadius:14))
                 }
-                LabelText("OVERVIEW")
-                HStack { Metric("SCANS","\(store.records.count)",cyan);Metric("SAFE","\(store.records.filter{$0.level=="LOW"}.count)",green);Metric("RISK","\(store.records.filter{$0.level != "LOW"}.count)",amber)}
-                LabelText("QUICK CHECK")
-                CardBox { CheckRow("Network Integrity","연결·네트워크 상태");CheckRow("Device Integrity","탈옥·시뮬레이터");CheckRow("Identity Region","KYC·기기 국가");CheckRow("Security State","데이터 보호 상태") }
-                if !store.records.isEmpty { LabelText("RECENT ACTIVITY");ForEach(store.records.prefix(3)){r in RecordRow(r){selected=r}} }
-                Notice("ERS는 기기·계정 환경 자가 점검 도구입니다. 거래소 비공개 규칙을 추정하거나 우회하지 않습니다.",gold)
+                HStack {Metric("Exchanges","\(Set(accounts.map{$0.exchange.name}).count)",gold);Metric("High","\(accounts.filter{$0.level=="HIGH"}.count)",red);Metric("Medium","\(accounts.filter{$0.level=="MEDIUM"}.count)",amber);Metric("Low","\(accounts.filter{$0.level=="LOW"}.count)",green)}
+                HStack {Text("Monitored Accounts").font(.headline);Spacer();Button("+ Add",action:start)}
+                ForEach(accounts){r in RecordRow(r){selected=r}}
+                Text("52개 거래소 · CMC 상위 50 + Tapbit · BitMart").font(.caption).foregroundStyle(gold2)
+                Notice("기기·입력 정보 기준이며 계정 안전·KYC 진위를 보증하지 않습니다. 목록 기준 2026.09.14",gold)
             }.padding(.horizontal,18).padding(.bottom,16)
-        }.sheet(item:$selected){ReportView(record:$0)}
+        }.fullScreenCover(item:$selected){ReportView(record:$0)}
     }
 }
 
@@ -93,21 +84,22 @@ struct ScanView: View {
     @State private var showExchanges=false
     @State private var search=""
     @State private var error=""
+    @State private var evidence=AccountEvidence()
     @State private var result:ScanRecord?
     var body:some View {
         ScrollView {
             VStack(alignment:.leading,spacing:14) {
-                PageTitle("RISK SCAN","스캔 대상과 기준을 설정하세요")
+                PageTitle("계정 추가","계정 정보를 입력해 점검을 시작하세요")
                 HStack(spacing:7){ForEach(0..<3){i in Capsule().fill(i < (result==nil ? 1:3) ? gold:line).frame(height:3)}}
                 LabelText("SCAN TARGET")
                 CardBox {
                     Button { showExchanges=true } label: {
-                        HStack { Text(exchange.name); Spacer(); Image(systemName:"chevron.right") }
+                        HStack { ExchangeMark(exchange.name); Text(exchange.name); Spacer(); Image(systemName:"chevron.right") }
                     }
                     .sheet(isPresented:$showExchanges) {
                         NavigationStack {
                             List(store.exchanges.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }) { item in
-                                Button(item.name) { exchange=item; result=nil; showExchanges=false }
+                                Button { exchange=item; result=nil; showExchanges=false } label:{HStack{ExchangeMark(item.name);Text(item.name)}}
                             }
                             .searchable(text:$search,prompt:"거래소 검색")
                             .navigationTitle("거래소 선택")
@@ -121,19 +113,31 @@ struct ScanView: View {
                     DarkField("KYC 국가 코드",text:$country)
                     Text("이메일이 아닌 거래소 UID와 두 자리 국가 코드를 입력하세요.").font(.caption2).foregroundStyle(muted)
                 }
-                LabelText("SCAN COVERAGE")
-                CardBox { Coverage("VPN 및 네트워크 · 미측정",false);Coverage("기기 무결성",true);Coverage("개발 환경 · 미측정",false);Coverage("국가 일치",true);Coverage("강화 분석",store.strictMode) }
+                DisclosureGroup("로그인·KYC 정보 추가") {
+                 VStack(spacing:12){
+                  Text("직접 확인한 정보 · 비밀번호·OTP·API 비밀키 입력 금지").font(.caption).foregroundStyle(muted)
+                  EvidencePicker("KYC 상태",value:$evidence.kyc,options:["미확인","승인","심사 중","거절"])
+                  EvidencePicker("계정 제한",value:$evidence.restriction,options:["미확인","제한 없음","제한 있음"])
+                  EvidencePicker("낯선 로그인",value:$evidence.unusualLogin,options:["미확인","없음","있음"])
+                  EvidencePicker("2단계 인증",value:$evidence.twoFactor,options:["미확인","설정됨","미설정"])
+                  DarkField("최근 로그인 국가 코드 (선택)",text:$evidence.loginCountry)
+                  DarkField("개인정보를 지운 거래소 안내문 (선택)",text:$evidence.notice)
+                  Text("입력한 안내문 원문은 저장하지 않습니다.").font(.caption2).foregroundStyle(muted)
+                 }.padding(.vertical,12)
+                }
+                Notice("UID만으로 거래소 내부 로그인·KYC 정보를 조회할 수 없습니다. 입력 근거와 미확인 항목을 구분합니다.",gold)
                 if !error.isEmpty { Notice(error,red) }
-                Button(result==nil ? "RUN FULL SCAN":"SCAN AGAIN") {
+                Button("계정 추가 및 점검") {
                     let name=exchange.name=="기타 거래소" ? custom.trimmingCharacters(in:.whitespaces):exchange.name
                     if name.isEmpty {error="거래소 이름을 입력해 주세요."}
                     else if uid.count<3 {error="거래소 UID를 3자 이상 입력해 주세요."}
-                    else if country.count != 2 {error="KYC 국가 코드를 두 자리로 입력해 주세요."}
-                    else {error="";result=store.scan(exchange:Exchange(name:name,mark:exchange.mark),uid:uid,country:country,worker:worker)}
+                    else if !Locale.isoRegionCodes.contains(country.uppercased()) {error="KYC 국가 코드를 두 자리로 입력해 주세요."}
+                    else if !evidence.loginCountry.isEmpty && !Locale.isoRegionCodes.contains(evidence.loginCountry.uppercased()) {error="로그인 국가 코드를 확인하세요."}
+                    else {error="";result=store.scan(exchange:Exchange(name:name,mark:exchange.mark),uid:uid,country:country,worker:worker,evidence:evidence)}
                 }.font(.system(size:14,weight:.black)).foregroundStyle(bg).frame(maxWidth:.infinity).padding().background(gold).clipShape(RoundedRectangle(cornerRadius:16))
-                if let result { InlineReport(result) }
+
             }.padding(.horizontal,18).padding(.bottom,16)
-        }.onAppear{if let first=store.exchanges.first,exchange.name=="Binance"{exchange=first}}
+        }.fullScreenCover(item:$result){ReportView(record:$0)}.onAppear{if let first=store.exchanges.first,exchange.name=="Binance"{exchange=first}}
     }
 }
 
@@ -151,7 +155,7 @@ struct HistoryView:View {
                     ForEach(store.records){r in RecordRow(r){selected=r}}
                 }
             }.padding(.horizontal,18).padding(.bottom,16)
-        }.sheet(item:$selected){ReportView(record:$0)}
+        }.fullScreenCover(item:$selected){ReportView(record:$0)}
     }
 }
 
@@ -164,7 +168,7 @@ struct SettingsView:View {
                 LabelText("SCAN PREFERENCES")
                 CardBox {ToggleRow("보호된 저장소에 기록 보관","이 기기에 최대 200개 보관",$store.autoSave);ToggleRow("강화 분석 모드","민감한 보안 기준",$store.strictMode);ToggleRow("보안 도움말 표시","결과에 권장 조치",$store.showTips)}
                 LabelText("APP INFORMATION")
-                CardBox {InfoRow("Application","Exchange Risk Scanner");InfoRow("Version","1.6 iOS");InfoRow("Engine","ERS Device Guard");InfoRow("Data Mode","On-device only")}
+                CardBox {InfoRow("Application","Exchange Risk Scanner");InfoRow("Version","1.8 iOS");InfoRow("Engine","ERS Device Guard");InfoRow("Data Mode","On-device only")}
                 LabelText("PRIVACY & SECURITY")
                 Notice("스캔 데이터는 기기에서만 분석되며 입력한 UID 원문을 외부 서버로 전송하지 않습니다.",green)
             }.padding(.horizontal,18).padding(.bottom,16)
@@ -177,7 +181,7 @@ struct ReportView:View {
     @Environment(\.dismiss) var dismiss
     var body:some View {
         NavigationStack {
-            ScrollView {VStack(alignment:.leading,spacing:12){LabelText("SECURITY REPORT");Text(record.level+" · \(record.score)/100").font(.system(size:28,weight:.black)).foregroundStyle(levelColor(record.level));CardBox{InfoRow("Exchange",record.exchange.name);InfoRow("UID",maskUid(record.uid));InfoRow("작업자",record.worker.isEmpty ? "미지정":record.worker);InfoRow("KYC Country",record.country);InfoRow("Device Country",record.deviceCountry.isEmpty ? "-":record.deviceCountry)};LabelText("ANALYSIS");CardBox{ForEach(record.signals){SignalRow($0)}}}.padding(18)}
+            ScrollView {VStack(alignment:.leading,spacing:12){HStack{ExchangeMark(record.exchange.name);Text(record.exchange.name).font(.title2)};LabelText("스캔 결과 · 기기·입력 정보 기준");Text(record.level+" · \(record.score)/100").font(.system(size:28,weight:.black)).foregroundStyle(levelColor(record.level));CardBox{InfoRow("Exchange",record.exchange.name);InfoRow("UID",maskUid(record.uid));InfoRow("작업자",record.worker.isEmpty ? "미지정":record.worker);InfoRow("KYC Country",record.country);InfoRow("Device Country",record.deviceCountry.isEmpty ? "-":record.deviceCountry)};LabelText("ANALYSIS");CardBox{ForEach(record.signals){SignalRow($0)}}}.padding(18)}
             .background(bg).toolbar{ToolbarItem(placement:.topBarTrailing){Button("완료"){dismiss()}}}
         }.preferredColorScheme(.dark)
     }
@@ -187,15 +191,23 @@ struct InlineReport:View {let r:ScanRecord;init(_ r:ScanRecord){self.r=r};var bo
 struct ScoreView:View{let score:Int?;let color:Color;var body:some View{ZStack{Circle().fill(color.opacity(0.1));Circle().stroke(color.opacity(0.55),lineWidth:2);VStack{Text(score.map(String.init) ?? "—").font(.system(size:22,weight:.black));Text(score==nil ? "READY":"SCORE").font(.system(size:7,weight:.bold))}.foregroundStyle(color)}.frame(width:67,height:67)}}
 struct LabelText:View{let text:String;init(_ t:String){text=t};var body:some View{Text(text).font(.system(size:10,weight:.bold)).tracking(1.2).foregroundStyle(gold2)}}
 struct PageTitle:View{let a:String;let b:String;init(_ a:String,_ b:String){self.a=a;self.b=b};var body:some View{VStack(alignment:.leading){LabelText(a);Text(b).font(.system(size:21,weight:.black))}}}
-struct CardBox<Content:View>:View{let content:Content;init(@ViewBuilder content:()->Content){self.content=content()};var body:some View{VStack(alignment:.leading,spacing:12){content}.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(panel).clipShape(RoundedRectangle(cornerRadius:22)).overlay(RoundedRectangle(cornerRadius:22).stroke(line))}}
+struct CardBox<Content:View>:View{let content:Content;init(@ViewBuilder content:()->Content){self.content=content()};var body:some View{VStack(alignment:.leading,spacing:12){content}.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(panel).clipShape(RoundedRectangle(cornerRadius:14)).overlay(RoundedRectangle(cornerRadius:14).stroke(line))}}
 struct Metric:View{let a:String;let b:String;let c:Color;init(_ a:String,_ b:String,_ c:Color){self.a=a;self.b=b;self.c=c};var body:some View{VStack(alignment:.leading){Text(b).font(.system(size:21,weight:.black)).foregroundStyle(c);Text(a).font(.system(size:8)).foregroundStyle(muted)}.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(panel).clipShape(RoundedRectangle(cornerRadius:17)).overlay(RoundedRectangle(cornerRadius:17).stroke(line))}}
 struct CheckRow:View{let a:String;let b:String;init(_ a:String,_ b:String){self.a=a;self.b=b};var body:some View{HStack{Circle().fill(green).frame(width:8,height:8);VStack(alignment:.leading){Text(a).font(.caption).fontWeight(.semibold);Text(b).font(.caption2).foregroundStyle(muted)};Spacer();Text("점검 항목").font(.system(size:8,weight:.bold)).foregroundStyle(cyan)}}}
 struct Coverage:View{let s:String;let on:Bool;init(_ s:String,_ on:Bool){self.s=s;self.on=on};var body:some View{HStack{Text(s).font(.caption);Spacer();Text(on ? "ON":"OFF").font(.caption2).fontWeight(.bold).foregroundStyle(on ? green:muted)}}}
 struct DarkField:View{let label:String;@Binding var text:String;init(_ l:String,text:Binding<String>){label=l;_text=text};var body:some View{TextField(label,text:$text).textInputAutocapitalization(.never).autocorrectionDisabled().padding(13).background(panel2).clipShape(RoundedRectangle(cornerRadius:12)).overlay(RoundedRectangle(cornerRadius:12).stroke(line)).foregroundStyle(.white)}}
 struct ToggleRow:View{let a:String;let b:String;@Binding var on:Bool;init(_ a:String,_ b:String,_ on:Binding<Bool>){self.a=a;self.b=b;_on=on};var body:some View{Toggle(isOn:$on){VStack(alignment:.leading){Text(a).font(.caption).fontWeight(.semibold);Text(b).font(.caption2).foregroundStyle(muted)}}}}
 struct InfoRow:View{let a:String;let b:String;init(_ a:String,_ b:String){self.a=a;self.b=b};var body:some View{HStack{Text(a).font(.caption).foregroundStyle(muted);Spacer();Text(b).font(.caption).fontWeight(.semibold)}}}
-struct SignalRow:View{let s:RiskSignal;init(_ s:RiskSignal){self.s=s};var body:some View{HStack{Circle().fill(s.triggered ? red:green).frame(width:7,height:7);VStack(alignment:.leading){Text(s.title).font(.caption);Text(s.value).font(.caption2).foregroundStyle(muted)};Spacer();Text(s.triggered ? "+\(s.points)":"PASS").font(.caption2).fontWeight(.bold).foregroundStyle(s.triggered ? red:green)}}}
-struct RecordRow:View{let r:ScanRecord;let tap:()->Void;init(_ r:ScanRecord,_ tap:@escaping()->Void){self.r=r;self.tap=tap};var body:some View{Button(action:tap){HStack{ZStack{RoundedRectangle(cornerRadius:12).fill(gold.opacity(0.1));Text(r.exchange.mark).font(.caption).fontWeight(.black).foregroundStyle(gold2)}.frame(width:42,height:42);VStack(alignment:.leading){Text(r.exchange.name).fontWeight(.bold);Text("UID "+maskUid(r.uid)).font(.caption2).foregroundStyle(muted)};Spacer();VStack{Text("\(r.score)").font(.system(size:20,weight:.black));Text(r.level).font(.system(size:9,weight:.bold))}.foregroundStyle(levelColor(r.level))}}.buttonStyle(.plain).padding(14).background(panel).clipShape(RoundedRectangle(cornerRadius:18)).overlay(RoundedRectangle(cornerRadius:18).stroke(line))}}
+struct SignalRow:View {
+ let s:RiskSignal;init(_ s:RiskSignal){self.s=s}
+ var unknown:Bool{s.value.contains("미확인")||s.value.contains("확인 불가")}
+ var reference:Bool{s.title.contains("입력")||s.title.contains("미검증")}
+ var tint:Color{unknown ? muted:s.triggered ? amber:reference ? gold:green}
+ var body:some View{HStack{Image(systemName:unknown||reference ? "info.circle":s.triggered ? "exclamationmark.circle":"checkmark.circle").foregroundStyle(tint);VStack(alignment:.leading){Text(s.title).font(.caption);Text(s.value).font(.caption2).foregroundStyle(muted)};Spacer();Text(unknown ? "미확인":s.triggered ? "+\(s.points)":reference ? "참고":"확인").font(.caption2).foregroundStyle(tint)}}
+}
+struct ExchangeMark:View {let name:String;init(_ name:String){self.name=name};var body:some View{Group{if let image=ExchangeCatalog.image(name){Image(uiImage:image).resizable().scaledToFit()}else{Text(String(name.prefix(2))).foregroundStyle(gold)}}.frame(width:42,height:42).padding(4).background(Color.black.opacity(0.4)).clipShape(RoundedRectangle(cornerRadius:10))}}
+struct EvidencePicker:View {let label:String;@Binding var value:String;let options:[String];init(_ label:String,value:Binding<String>,options:[String]){self.label=label;_value=value;self.options=options};var body:some View{Picker(label,selection:$value){ForEach(options,id:\.self){Text($0)}}}}
+struct RecordRow:View{let r:ScanRecord;let tap:()->Void;init(_ r:ScanRecord,_ tap:@escaping()->Void){self.r=r;self.tap=tap};var body:some View{Button(action:tap){HStack{ExchangeMark(r.exchange.name);VStack(alignment:.leading){Text(r.exchange.name).fontWeight(.bold);Text("UID "+maskUid(r.uid)).font(.caption2).foregroundStyle(muted)};Spacer();VStack{Text("\(r.score)").font(.system(size:20,weight:.black));Text(r.level).font(.system(size:9,weight:.bold))}.foregroundStyle(levelColor(r.level))}}.buttonStyle(.plain).padding(14).background(panel).clipShape(RoundedRectangle(cornerRadius:18)).overlay(RoundedRectangle(cornerRadius:18).stroke(line))}}
 func Notice(_ s:String,_ c:Color)->some View{Text(s).font(.caption).foregroundStyle(c==red ? red:muted).padding(14).frame(maxWidth:.infinity,alignment:.leading).background(c.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(c.opacity(0.25)))}
 func levelColor(_ s:String?)->Color{s=="HIGH" ? red:s=="MEDIUM" ? amber:s=="LOW" ? green:gold}
 func maskUid(_ s:String)->String{s.count<=4 ? String(repeating:"•",count:s.count):String(s.prefix(2))+String(repeating:"•",count:min(6,s.count-4))+String(s.suffix(2))}

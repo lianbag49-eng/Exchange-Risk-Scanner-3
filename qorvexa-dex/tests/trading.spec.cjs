@@ -12,3 +12,7 @@ test('testnet order signing, rejection handling and mainnet lock',async({page})=
  const calls=await page.evaluate(()=>window.calls);const signed=calls.find(c=>c.method==='eth_signTypedData_v4');expect(JSON.parse(signed.params[1]).message.source).toBe('b');
  await page.locator('#marketNetwork').selectOption('mainnet');await expect(page.locator('#tradeReview')).toBeDisabled();
 });
+test('explicit OKX selection uses only the requested provider',async({page})=>{
+ await page.addInitScript(()=>{window.used=[];window.ethereum={request(){window.used.push('other');throw Error('Wrong provider')}};window.okxwallet={request(x){window.used.push(x.method);throw Error('User rejected')}}});
+ await page.goto('/qorvexa-dex/#markets');await page.locator('#walletProvider').selectOption('okx');await page.locator('#tradeConnect').click();await expect(page.locator('#tradeStatus')).toContainText('User rejected');expect(await page.evaluate(()=>window.used)).toEqual(['eth_requestAccounts']);await expect(page.locator('#tradeReview')).toBeDisabled();
+});

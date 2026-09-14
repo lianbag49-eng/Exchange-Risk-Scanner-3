@@ -43,3 +43,18 @@ This is a simulation frontend, NOT a release-ready DEX.
 - Removed demo overview/pools and the separate Base Sepolia wallet connector.
 - Practice balances/history remain available together; all built-in labels and messages use English.
 - Existing market/order safeguards are unchanged. CI covers English navigation, mobile width, simulation, stream freshness and mocked testnet signing.
+
+## Wallet-style navigation
+
+Assets, Trade, Discover, Settings retain BELTRIX branding. Practice remains in Settings.
+Assets queries Hyperliquid mainnet/testnet account data by connected or watch-only public address. Spot balances are shown in token units separately from perpetual account value. Invalid responses clear balances; requests cancel on network/address changes.
+OKX Wallet can be selected explicitly through its injected browser provider. No private keys, seed phrases, mainnet orders, or multichain sends are handled by this prototype.
+
+References:
+- https://web3.okx.com/ — product navigation reference; no affiliation.
+- https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint — balances, positions and fills.
+
+
+## Wallet workspace update (2026-09-14)
+
+The earlier read-only Assets/Discover prototype is now incorporated into the expanded Wallet/Explore workspace. It retains Hyperliquid account inspection, watch-only access, app discovery and explicit OKX provider selection. Native/ERC-20 wallet transfers and indexed blockchain history are now implemented; Hyperliquid order execution remains testnet-only. See WALLET-RELEASE.md for implemented features, data coverage and outstanding funded-wallet/audit gates.
