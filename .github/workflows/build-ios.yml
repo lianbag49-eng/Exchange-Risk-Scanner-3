@@ -1,0 +1,20 @@
+name: Validate iOS App
+on:
+  push:
+    paths:
+      - 'ios-app/**'
+      - '.github/workflows/build-ios.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: ios-app
+        run: xcodegen generate
+      - name: Build simulator app
+        working-directory: ios-app
+        run: xcodebuild -project ERS.xcodeproj -scheme ERS -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build

@@ -67,7 +67,13 @@ class MainActivity:ComponentActivity(){
  override fun onCreate(b:Bundle?){super.onCreate(b)
   window.statusBarColor=android.graphics.Color.rgb(5,10,16)
   window.navigationBarColor=android.graphics.Color.rgb(5,10,16)
-  setContent{MaterialTheme(colorScheme=darkColorScheme(primary=Gold,background=Bg,surface=Card,onSurface=Txt,onBackground=Txt)){App()}}
+  setContent{
+   MaterialTheme(colorScheme=darkColorScheme(
+    primary=Gold,onPrimary=Bg,secondary=Cyan,onSecondary=Bg,
+    background=Bg,onBackground=Txt,surface=Card,onSurface=Txt,
+    surfaceVariant=Card2,onSurfaceVariant=Muted,outline=Line,error=Red,onError=Bg
+   )){Surface(modifier=Modifier.fillMaxSize(),color=Bg,contentColor=Txt){App()}}
+  }
  }
 
  @Composable private fun App(){
@@ -141,7 +147,7 @@ class MainActivity:ComponentActivity(){
    Panel(){
     ExposedDropdownMenuBox(expanded=menu,onExpandedChange={menu=!menu}){
      OutlinedTextField(value=ex.name,onValueChange={},readOnly=true,label={Text("거래소 선택")},leadingIcon={Mark(ex,34)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(menu)},colors=fields(),modifier=Modifier.fillMaxWidth().menuAnchor())
-     ExposedDropdownMenu(expanded=menu,onDismissRequest={menu=false},modifier=Modifier.background(Card2)){exchanges.forEach{o->DropdownMenuItem(text={Row(verticalAlignment=Alignment.CenterVertically){Mark(o,34);Spacer(Modifier.width(10.dp));Text(o.name)}},onClick={setEx(o);menu=false;result=null})}}
+     ExposedDropdownMenu(expanded=menu,onDismissRequest={menu=false},modifier=Modifier.background(Card2)){exchanges.forEach{o->DropdownMenuItem(text={Row(verticalAlignment=Alignment.CenterVertically){Mark(o,34);Spacer(Modifier.width(10.dp));Text(o.name,color=Txt)}},onClick={setEx(o);menu=false;result=null},colors=MenuDefaults.itemColors(textColor=Txt,leadingIconColor=Txt,trailingIconColor=Txt,disabledTextColor=Muted))}}
     }
     if(ex.name=="기타 거래소"){Spacer(Modifier.height(12.dp));OutlinedTextField(value=custom,onValueChange={setCustom(it);result=null},label={Text("거래소 이름")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())}
     Spacer(Modifier.height(12.dp))
@@ -200,7 +206,7 @@ class MainActivity:ComponentActivity(){
  }
 
  @Composable private fun Page(content:@Composable ColumnScope.()->Unit){Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=18.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(14.dp),content=content)}
- @Composable private fun Panel(border:Color=Line,content:@Composable ColumnScope.()->Unit){Surface(color=Card,shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().border(1.dp,border,RoundedCornerShape(22.dp))){Column(Modifier.padding(16.dp),content=content)}}
+ @Composable private fun Panel(border:Color=Line,content:@Composable ColumnScope.()->Unit){Surface(color=Card,contentColor=Txt,shape=RoundedCornerShape(22.dp),modifier=Modifier.fillMaxWidth().border(1.dp,border,RoundedCornerShape(22.dp))){Column(Modifier.padding(16.dp),content=content)}}
  @Composable private fun Title(a:String,b:String){Column{Label(a);Text(b,fontSize=21.sp,fontWeight=FontWeight.Black)}}
  @Composable private fun Label(s:String){Text(s,color=Gold2,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.25.sp)}
  @Composable private fun Pill(s:String,c:Color){Box(Modifier.clip(RoundedCornerShape(20.dp)).background(c.copy(.09f)).border(1.dp,c.copy(.28f),RoundedCornerShape(20.dp)).padding(9.dp,5.dp)){Text(s,color=c,fontSize=8.sp,fontWeight=FontWeight.Bold)}}
@@ -215,7 +221,7 @@ class MainActivity:ComponentActivity(){
  @Composable private fun Steps(n:Int){Row(horizontalArrangement=Arrangement.spacedBy(7.dp)){repeat(3){i->Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(if(i<n)Gold else Line))}}}
  @Composable private fun HistoryRow(r:Record,open:()->Unit){val c=levelColor(r.result.level);Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Card).border(1.dp,Line,RoundedCornerShape(18.dp)).clickable(onClick=open).padding(14.dp),verticalAlignment=Alignment.CenterVertically){Mark(r.exchange,42);Spacer(Modifier.width(11.dp));Column(Modifier.weight(1f)){Text(r.name,fontWeight=FontWeight.Bold);Text("UID "+mask(r.uid)+" · "+r.time,color=Muted,fontSize=10.sp)};Column(horizontalAlignment=Alignment.End){Text(r.result.score.toString(),color=c,fontSize=20.sp,fontWeight=FontWeight.Black);Text(r.result.level,color=c,fontSize=9.sp)}}}
  @Composable private fun Mark(e:Exchange,n:Int){Box(Modifier.size(n.dp).clip(RoundedCornerShape((n/3).dp)).background(e.color.copy(.16f)).border(1.dp,e.color.copy(.32f),RoundedCornerShape((n/3).dp)),contentAlignment=Alignment.Center){Text(e.mark,color=e.color,fontSize=9.sp,fontWeight=FontWeight.Black);e.logo?.let{AsyncImage(model=it,contentDescription=e.name,contentScale=ContentScale.Fit,modifier=Modifier.fillMaxSize().padding(5.dp).clip(RoundedCornerShape((n/4).dp)))}}}
- @Composable private fun fields()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Gold,unfocusedBorderColor=Line,focusedLabelColor=Gold2,unfocusedLabelColor=Muted,focusedTextColor=Txt,unfocusedTextColor=Txt,cursorColor=Gold,focusedContainerColor=Card2.copy(.5f),unfocusedContainerColor=Card2.copy(.28f))
+ @Composable private fun fields()=OutlinedTextFieldDefaults.colors(focusedBorderColor=Gold,unfocusedBorderColor=Line,focusedLabelColor=Gold2,unfocusedLabelColor=Muted,focusedTextColor=Txt,unfocusedTextColor=Txt,cursorColor=Gold,focusedContainerColor=Card2.copy(.5f),unfocusedContainerColor=Card2.copy(.28f),focusedSupportingTextColor=Muted,unfocusedSupportingTextColor=Muted,focusedPlaceholderColor=Muted,unfocusedPlaceholderColor=Muted,focusedLeadingIconColor=Txt,unfocusedLeadingIconColor=Txt,focusedTrailingIconColor=Txt,unfocusedTrailingIconColor=Txt)
  private fun levelColor(s:String?)=when(s){"HIGH"->Red;"MEDIUM"->Amber;"LOW"->Green;else->Gold}
  private fun mask(s:String)=if(s.length<=4)s else s.take(2)+"•".repeat((s.length-4).coerceAtMost(6))+s.takeLast(2)
 }
