@@ -40,6 +40,33 @@ jobs:
         working-directory: android-app
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
 
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Verify screens and offline logos
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          disable-animations: true
+          script: |
+            cd android-app && gradle --no-daemon :app:connectedDebugAndroidTest
+            mkdir -p android-app/screenshots
+            adb pull /sdcard/Android/data/com.example.riskscanner/files/. android-app/screenshots/
+
+      - name: Upload UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ERS-screen-tests
+          path: |
+            android-app/screenshots
+            android-app/app/build/reports/androidTests
+            android-app/app/build/reports/tests
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
