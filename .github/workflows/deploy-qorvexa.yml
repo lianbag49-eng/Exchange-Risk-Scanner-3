@@ -33,6 +33,11 @@ jobs:
       - name: Test trading guards and UI
         working-directory: qorvexa-dex
         run: npm test
+      - name: Capture UI review images
+        if: always()
+        working-directory: qorvexa-dex
+        run: |
+          node -e "const fs=require('fs'); for(const f of ['terminal-mobile.jpg','terminal-desktop.jpg']) { const p='test-results/'+f; if(fs.existsSync(p)) console.log('UI_IMAGE_'+f+':'+fs.readFileSync(p).toString('base64')); }"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

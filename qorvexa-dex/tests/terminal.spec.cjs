@@ -2,6 +2,12 @@ const {test,expect}=require('@playwright/test');
 const user='0x1111111111111111111111111111111111111111';
 async function fixture(page,options={}){
  const actions=[];
+ await page.routeWebSocket('wss://api.hyperliquid*.xyz/ws',ws=>{
+  ws.onMessage(message=>{
+   const x=JSON.parse(message);
+   if(options.stream&&x.subscription?.type==='l2Book')ws.send(JSON.stringify({channel:'l2Book',data:{coin:x.subscription.coin,time:Date.now(),levels:[[{px:'2600',sz:'50',n:1}],[{px:'2601',sz:'50',n:1}]]}}));
+  });
+ });
  await page.addInitScript(({user,signatureReject})=>{
   window.walletCalls=[];window.signatures=[];window.walletEvents={};window.currentChain='0x66eee';window.currentUser=user;
   window.ethereum={on(event,cb){window.walletEvents[event]=cb},async request({method,params}){
@@ -48,7 +54,7 @@ async function ready(page,options={}){
 }
 async function review(page){await page.locator('#orderSize').fill('0.1');await page.locator('#limitPrice').fill('2500');await page.locator('#reviewOrder').click();await expect(page.locator('#orderDialog')).toBeVisible();}
 test('perp order uses reviewed values, signed testnet domain, testnet endpoint only',async({page})=>{
- const actions=await ready(page);await review(page);await expect(page.locator('#orderReview')).toContainText('250.00');
+ const actions=await ready(page);await page.screenshot({path:'test-results/terminal-desktop.jpg',type:'jpeg',quality:55,fullPage:true});await review(page);await expect(page.locator('#orderReview')).toContainText('250.00');
  await page.locator('#submitOrder').click();await expect(page.locator('#submitState')).toContainText('주문 접수');
  expect(actions.map(a=>a.action.type)).toEqual(['updateLeverage','order']);
  expect(actions.every(a=>a.url==='https://api.hyperliquid-testnet.xyz/exchange')).toBe(true);
@@ -67,4 +73,8 @@ test('account change invalidates review',async({page})=>{const actions=await rea
 test('signature rejection sends nothing',async({page})=>{const actions=await ready(page,{signatureReject:true});await review(page);await page.locator('#submitOrder').click();await expect(page.locator('#submitState')).toContainText('미완료');expect(actions).toHaveLength(0);});
 test('ambiguous order result is not retried and locks later orders',async({page})=>{const actions=await ready(page,{orderTimeout:true});await review(page);await page.locator('#submitOrder').click();await expect(page.locator('#submitState')).toContainText('미확인');await page.locator('#closeOrder').click();await page.locator('#reviewOrder').click();await expect(page.locator('#toast')).toContainText('이전 주문');expect(actions.filter(a=>a.action.type==='order')).toHaveLength(1);});
 test('cancel resolves own market when another chart is selected',async({page})=>{const actions=await ready(page,{openOrder:true});await page.locator('#market').selectOption('1');page.once('dialog',d=>d.accept());await page.locator('#openOrders button').click();await expect(page.locator('#toast')).toContainText('취소 완료');expect(actions[0].action.cancels).toEqual([{a:0,o:777}]);});
-test('terminal renders mobile without overflow',async({page})=>{await page.setViewportSize({width:390,height:844});await ready(page);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/terminal-mobile.png',fullPage:true});});
+test('terminal renders mobile without overflow',async({page})=>{await page.setViewportSize({width:390,height:844});await ready(page);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'test-results/terminal-mobile.jpg',type:'jpeg',quality:55,fullPage:true});});
+
+test('websocket book updates the displayed depth',async({page})=>{await ready(page,{stream:true});await expect(page.locator('#feedState')).toContainText('실시간');await expect(page.locator('#bids')).toContainText('2,600');});
+test('expired review cannot sign',async({page})=>{const actions=await ready(page);await review(page);await page.evaluate(()=>{const now=Date.now;Date.now=()=>now()+61000});await page.locator('#submitOrder').click();await expect(page.locator('#submitState')).toContainText('만료');expect(actions).toHaveLength(0);expect(await page.evaluate(()=>window.signatures.length)).toBe(0);});
+test('failed market metadata clears previous market values',async({page})=>{await ready(page);await page.route('https://api.hyperliquid-testnet.xyz/info',r=>r.fulfill({status:503,body:'Unavailable'}));await page.locator('#marketType').selectOption('spot');await expect(page.locator('#feedState')).toContainText('실패');await expect(page.locator('#lastPrice')).toHaveText('—');await expect(page.locator('#market')).toHaveValue('');});

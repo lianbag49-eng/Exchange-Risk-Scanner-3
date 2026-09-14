@@ -49,9 +49,9 @@ data class Exchange(val name:String,val mark:String,val color:Color,val logo:Str
 data class Record(val exchange:Exchange,val name:String,val uid:String,val country:String,val result:RiskResult,val snapshot:DeviceSnapshot,val time:String)
 
 private val exchanges=listOf(
- Exchange("Binance","BN",Color(0xFFF3BA2F),"https://www.binance.com/favicon.ico"),
+ Exchange("Binance","BN",Color(0xFFF3BA2F),"android.resource://com.example.riskscanner/drawable/logo_binance"),
  Exchange("Bybit","BY",Color(0xFFF7A600),"https://www.bybit.com/favicon.ico"),
- Exchange("OKX","OK",Color.White,"https://www.okx.com/favicon.ico"),
+ Exchange("OKX","OK",Color.White,"android.resource://com.example.riskscanner/drawable/logo_okx"),
  Exchange("Bitget","BG",Color(0xFF00D3B7),"android.resource://com.example.riskscanner/drawable/logo_bitget"),
  Exchange("BingX","BX",Color(0xFF2D7CFF),"android.resource://com.example.riskscanner/drawable/logo_bingx"),
  Exchange("Toobit","TB",Color(0xFF19C7B5),"android.resource://com.example.riskscanner/drawable/logo_toobit"),
@@ -59,7 +59,7 @@ private val exchanges=listOf(
  Exchange("Deepcoin","DC",Color(0xFF7258FF),"android.resource://com.example.riskscanner/drawable/logo_deepcoin"),
  Exchange("Gate.io","GT",Color(0xFF17C6B3),"android.resource://com.example.riskscanner/drawable/logo_gateio"),
  Exchange("MEXC","MX",Color(0xFF2F6BFF),"https://www.mexc.com/favicon.ico"),
- Exchange("KuCoin","KC",Color(0xFF23AF91),"https://www.kucoin.com/favicon.ico"),
+ Exchange("KuCoin","KC",Color(0xFF23AF91),"android.resource://com.example.riskscanner/drawable/logo_kucoin"),
  Exchange("LBank","LB",Color(0xFF2D74FF),"android.resource://com.example.riskscanner/drawable/logo_lbank"),
  Exchange("OURBIT","OB",Color(0xFF7C5CFF),"android.resource://com.example.riskscanner/drawable/logo_ourbit"),
  Exchange("Tapbit","TA",Color(0xFF39B5FF),"android.resource://com.example.riskscanner/drawable/logo_tapbit"),

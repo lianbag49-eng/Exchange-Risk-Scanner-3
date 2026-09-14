@@ -11,6 +11,7 @@ try{
  state={balances:x.balances,records:x.records.filter(r=>PRICES[r.from]&&PRICES[r.to]&&Number.isFinite(r.amount)&&Number.isFinite(r.output)&&typeof r.time==='string').slice(0,200),slippage:Number.isFinite(x.slippage)&&x.slippage>=0.1&&x.slippage<=5?x.slippage:0.5,persist:true};
  }
 }catch{}
+try { if(localStorage.getItem(KEY+'-persist')==='false')state.persist=false; } catch {}
 function toast(s){$('toast').textContent=s;$('toast').classList.add('show');clearTimeout(timer);timer=setTimeout(()=>$('toast').classList.remove('show'),4000)}
 window.toast=toast;
 window.openPage=id=>{
@@ -18,7 +19,7 @@ window.openPage=id=>{
  document.querySelectorAll('.nav button').forEach(x=>{x.classList.toggle('active',x.dataset.page===id);x.setAttribute('aria-current',x.dataset.page===id?'page':'false')});
 };
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>window.openPage(b.dataset.page));
-function save(){try{if(state.persist)localStorage.setItem(KEY,JSON.stringify(state));else localStorage.removeItem(KEY)}catch{toast('브라우저 저장 실패: 현재 세션에서만 유지됩니다')}}
+function save(){try{localStorage.setItem(KEY+'-persist',String(state.persist));if(state.persist)localStorage.setItem(KEY,JSON.stringify(state));else localStorage.removeItem(KEY)}catch{toast('브라우저 저장 실패: 현재 세션에서만 유지됩니다')}}
 function validAmount(value){return /^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(value)&&Number(value)>0&&Number.isFinite(Number(value))}
 function quote(){
  const from=$('from').value,to=$('to').value,n=Number($('pay').value);

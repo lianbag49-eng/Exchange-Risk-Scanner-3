@@ -126,5 +126,26 @@
     "url": "https://www.mgbx.com/_next/static/favicon.ico",
     "resource": "logo_mgbx",
     "status": "ok"
+  },
+  {
+    "name": "Binance",
+    "source": "https://binance.com",
+    "assetProvider": "Simple Icons",
+    "resource": "logo_binance",
+    "status": "ok"
+  },
+  {
+    "name": "OKX",
+    "source": "https://commons.wikimedia.org/wiki/File:OKX_logo.svg",
+    "assetProvider": "Simple Icons",
+    "resource": "logo_okx",
+    "status": "ok"
+  },
+  {
+    "name": "KuCoin",
+    "source": "https://www.kucoin.com/news/en-kucoin-media-kit",
+    "assetProvider": "Simple Icons",
+    "resource": "logo_kucoin",
+    "status": "ok"
   }
 ]

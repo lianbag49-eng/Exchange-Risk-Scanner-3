@@ -51,3 +51,5 @@ test('mobile layout and navigation',async({page})=>{
  }
  await page.screenshot({path:'test-results/mobile.png',fullPage:true});
 });
+
+test('paper persistence opt-out survives reload',async({page})=>{await page.goto('/qorvexa-dex/dist/');await page.getByRole('button',{name:'SETTINGS',exact:true}).click();await page.locator('#persist').uncheck();await page.reload();await page.getByRole('button',{name:'SETTINGS',exact:true}).click();await expect(page.locator('#persist')).not.toBeChecked();expect(await page.evaluate(()=>localStorage.getItem('qorvexa-preview-v2'))).toBeNull();});
