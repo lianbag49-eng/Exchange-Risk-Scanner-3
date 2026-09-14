@@ -31,7 +31,7 @@ async function fixture(page,options={}){
   if(req.url().endsWith('/exchange')){
    actions.push({url:req.url(),...b});
    if(options.orderTimeout&&b.action.type==='order'){return route.abort('failed')}
-   data=b.action.type==='order'?{status:'ok',response:{type:'order',data:{statuses:[{resting:{oid:777}}]}}}:b.action.type==='cancel'?{status:'ok',response:{type:'cancel',data:{statuses:['success']}}}:{status:'ok',response:{type:'default'}};
+   data=b.action.type==='order'?{status:'ok',response:{type:'order',data:{statuses:options.unknownStatus?['waitingForFill']:[{resting:{oid:777}}]}}}:b.action.type==='cancel'?{status:'ok',response:{type:'cancel',data:{statuses:['success']}}}:{status:'ok',response:{type:'default'}};
   }else switch(b.type){
    case 'metaAndAssetCtxs':data=[pm,[{markPx:'2500',prevDayPx:'2450',dayNtlVlm:'1000000'},{markPx:'80000',prevDayPx:'81000',dayNtlVlm:'2000000'}]];break;
    case 'spotMetaAndAssetCtxs':data=[sm,[{markPx:'1',prevDayPx:'0.98',dayNtlVlm:'12345'}]];break;
@@ -81,3 +81,5 @@ test('expired review cannot sign',async({page})=>{const actions=await ready(page
 test('failed market metadata clears previous market values',async({page})=>{await ready(page);await page.route('https://api.hyperliquid-testnet.xyz/info',r=>r.fulfill({status:503,body:'Unavailable'}));await page.locator('#marketType').selectOption('spot');await expect(page.locator('#feedState')).toContainText('실패');await expect(page.locator('#lastPrice')).toHaveText('—');await expect(page.locator('#market')).toHaveValue('');});
 
 test('trade ticks appear within one second and clear on market switch',async({page})=>{await ready(page,{trades:true});await expect(page.locator('#lastPrice')).toHaveText('$2,605',{timeout:2000});await expect(page.locator('#marketClock')).toContainText('1초');await expect(page.locator('#marketTrades')).toContainText('0.3');await page.locator('#market').selectOption('1');await expect(page.locator('#marketTrades')).toContainText('대기');});
+
+test('unrecognized order status retains the duplicate-submit lock',async({page})=>{const actions=await ready(page,{unknownStatus:true});await review(page);await page.locator('#submitOrder').click();await expect(page.locator('#submitState')).toContainText('미확인');await page.locator('#closeOrder').click();await page.locator('#reviewOrder').click();await expect(page.locator('#toast')).toContainText('이전 주문');expect(actions.filter(a=>a.action.type==='order')).toHaveLength(1);});

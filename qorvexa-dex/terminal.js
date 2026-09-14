@@ -224,7 +224,9 @@ function clientFor(r){
   await guard(r,r.marketEpoch!=null);
   if(payload.action.type==='order')pending({user:r.user,cloid:r.cloid,expires:r.expires});
   const result=await post('testnet','exchange',payload,15000);
-  if(payload.action.type==='order'&&(result.status==='err'||(result.status==='ok'&&result.response?.type==='order'&&result.response.data?.statuses?.length===1)))pending(null);
+  const statuses=result.response?.data?.statuses, status=statuses?.[0];
+  const knownStatus=typeof status?.error==='string'||Number.isSafeInteger(status?.resting?.oid)||Number.isSafeInteger(status?.filled?.oid);
+  if(payload.action.type==='order'&&(result.status==='err'||(result.status==='ok'&&result.response?.type==='order'&&statuses?.length===1&&knownStatus)))pending(null);
   return result;
  }};
  return new ExchangeClient({wallet:guardedWallet,transport});
