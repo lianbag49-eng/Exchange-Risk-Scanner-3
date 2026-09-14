@@ -20,6 +20,9 @@ object RiskEngine {
         add("현재 시간대", s.timezoneId, 0, false)
         add("공인 IP·ISP·접속 국가", "확인 불가", 0, false)
         add("거래소 로그인 이력·KYC 진위", "확인 불가", 0, false)
+        add("HTTP 프록시 설정",s.httpProxy.toString(),0,s.httpProxy)
+        add("인터넷 연결 검증",s.networkValidated?.toString()?:"확인 불가",10,s.networkValidated==false)
+        add("기기 정보",s.deviceModel.ifBlank{"확인 불가"},0,false)
         val score = signals.sumOf { it.points }.coerceAtMost(100)
         val level = when {
             s.rootedSuspected || s.emulatorSuspected || score >= 60 -> "HIGH"

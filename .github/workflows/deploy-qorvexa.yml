@@ -1,8 +1,8 @@
-name: Deploy QORVEXA Testnet
+name: Deploy BELTRIX Testnet
 on:
   push:
     branches: [main]
-    paths: ['qorvexa-dex/**','.github/workflows/deploy-qorvexa.yml']
+    paths: ['qorvexa-dex/**','.github/workflows/deploy-qorvexa.yml','package.json','package-lock.json']
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,7 +23,9 @@ jobs:
         with:
           node-version: '22'
       - name: Install browser tests
-        run: npm install --no-save @playwright/test@1.51.1
+        run: npm ci
+      - name: Bundle testnet client
+        run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Validate JavaScript
@@ -38,7 +40,7 @@ jobs:
       - name: Prepare web-only artifact
         run: |
           mkdir -p public/qorvexa-dex
-          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
+          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/trading.bundle.js qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
       - uses: actions/configure-pages@v5
         with:
           enablement: true

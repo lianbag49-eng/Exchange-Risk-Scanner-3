@@ -13,5 +13,8 @@ data class DeviceSnapshot(
     val developerOptions: Boolean,
     val adbEnabled: Boolean,
     val secureLockScreen: Boolean,
-    val securityPatch: String
+    val securityPatch: String,
+    val httpProxy: Boolean = false,
+    val networkValidated: Boolean? = null,
+    val deviceModel: String = ""
 )

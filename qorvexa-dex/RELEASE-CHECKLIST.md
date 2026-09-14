@@ -22,3 +22,16 @@ This is a simulation frontend, NOT a release-ready DEX.
 - Candle WebSocket subscription, reconnect, stale-data and failure states
 - Market data is separate from paper swap execution; no real orders or liquidity added
 - Independent security audit is still outstanding
+
+## 0.4 implementation and remaining verification
+- Spot/perpetual trade and L2 book subscriptions; UI refresh every 1 second.
+- Candle intervals remain 1 minute or greater, per upstream API. No fabricated 1-second candles.
+- Testnet-only SDK signing, GTC/ALO orders, cancellation, balances, open orders and positions.
+- Mainnet market display cannot submit orders. Price freshness and precision checked before order review.
+- Signing requires an injected user wallet; private keys are never collected or persisted.
+- ALO is an order-book liquidity provision option, not an AMM pool or funded liquidity guarantee.
+- Dependency audit after version upgrades: zero reported vulnerabilities on 2026-09-14.
+- Automated tests use mocked API responses and test signatures. They are not proof of live settlement.
+- Pending external verification: funded testnet wallet order/partial-fill/cancel cycle; actual liquidity funding; independent security audit; real iPhone wallet compatibility.
+- ERS: Android encrypted record persistence, iOS Keychain record storage, worker entry, search, remediation hints and expanded local device checks.
+- ERS public IP/ISP/KYC/login history remain unavailable without a verified external data integration. Official logo endpoints may block requests and must not be described as verified offline logo assets.

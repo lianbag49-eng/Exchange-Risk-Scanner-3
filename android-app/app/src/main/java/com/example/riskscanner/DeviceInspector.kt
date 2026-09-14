@@ -22,8 +22,20 @@ class DeviceInspector(private val context: Context) {
         developerOptions = setting(Settings.Global.DEVELOPMENT_SETTINGS_ENABLED),
         adbEnabled = setting(Settings.Global.ADB_ENABLED),
         secureLockScreen = (context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure,
-        securityPatch = Build.VERSION.SECURITY_PATCH ?: ""
+        securityPatch = Build.VERSION.SECURITY_PATCH ?: "",
+        httpProxy = proxyConfigured(),
+        networkValidated = validated(),
+        deviceModel = "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}"
     )
+
+    private fun proxyConfigured():Boolean = try {
+        val cm=context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.activeNetwork?.let{cm.getLinkProperties(it)?.httpProxy != null} ?: false
+    } catch (_:Exception){false}
+    private fun validated():Boolean? = try {
+        val cm=context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.activeNetwork?.let{cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)}
+    } catch (_:Exception){null}
 
     private fun setting(name: String): Boolean = try {
         Settings.Global.getInt(context.contentResolver, name, 0) == 1
