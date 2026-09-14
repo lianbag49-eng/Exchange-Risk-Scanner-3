@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import LocalAuthentication
 
 struct Exchange: Identifiable, Hashable {
     let id = UUID()
@@ -40,16 +41,16 @@ final class ERSStore: ObservableObject {
         let deviceCountry = Locale.current.region?.identifier ?? ""
         let jailbroken = Self.isJailbreakSuspected()
         let simulator = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil
-        let passcode = UIApplication.shared.isProtectedDataAvailable
+        let passcode = LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: nil)
         let mismatch = !country.isEmpty && !deviceCountry.isEmpty && country.uppercased() != deviceCountry.uppercased()
         let signals = [
             RiskSignal(title:"탈옥/시스템 변조 의심",value:jailbroken ? "감지됨":"감지되지 않음",points:jailbroken ? 40:0,triggered:jailbroken),
             RiskSignal(title:"시뮬레이터 환경",value:simulator ? "감지됨":"감지되지 않음",points:simulator ? 40:0,triggered:simulator),
             RiskSignal(title:"기기 보호 상태",value:passcode ? "정상":"확인 필요",points:passcode ? 0:10,triggered:!passcode),
-            RiskSignal(title:"KYC 국가 / 기기 국가",value:country.uppercased()+" / "+deviceCountry,points:mismatch ? 20:0,triggered:mismatch),
+            RiskSignal(title:"입력 국가 / 기기 언어 지역",value:country.uppercased()+" / "+deviceCountry,points:0,triggered:mismatch),
             RiskSignal(title:"보안 데이터 보호",value:"활성",points:0,triggered:false)
         ]
-        let score = min(100, signals.reduce(0){$0+$1.points} + (strictMode && mismatch ? 5:0))
+        let score = min(100, signals.reduce(0){$0+$1.points})
         let level = score >= 60 ? "HIGH" : score >= 30 ? "MEDIUM" : "LOW"
         let record = ScanRecord(exchange:exchange,uid:uid,country:country.uppercased(),deviceCountry:deviceCountry,score:score,level:level,signals:signals,date:Date())
         if autoSave { records.insert(record,at:0) }

@@ -28,10 +28,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Bg=Color(0xFF050A10)
-private val Card=Color(0xFF0B151F)
-private val Card2=Color(0xFF111F2C)
-private val Line=Color(0xFF24394A)
+private val Bg=Color(0xFF070A09)
+private val Card=Color(0xFF101815)
+private val Card2=Color(0xFF16211C)
+private val Line=Color(0xFF304238)
 private val Gold=Color(0xFFD9B56D)
 private val Gold2=Color(0xFFF2D89E)
 private val Cyan=Color(0xFF55D8FF)
@@ -58,7 +58,7 @@ private val exchanges=listOf(
  Exchange("KuCoin","KC",Color(0xFF23AF91),"https://www.kucoin.com/favicon.ico"),
  Exchange("LBank","LB",Color(0xFF2D74FF),"https://www.lbank.com/favicon.ico"),
  Exchange("OURBIT","OB",Color(0xFF7C5CFF),"https://www.ourbit.com/favicon.ico"),
- Exchange("Tabit","TA",Color(0xFF39B5FF)),
+ Exchange("Tapbit","TP",Color(0xFF39B5FF),"https://www.tapbit.com/favicon.ico"),
  Exchange("MGBX","MG",Color(0xFFFF8A3D)),
  Exchange("기타 거래소","+",Gold)
 )
@@ -88,7 +88,7 @@ class MainActivity:ComponentActivity(){
   var save by remember{mutableStateOf(true)}
   var strict by remember{mutableStateOf(false)}
   var tips by remember{mutableStateOf(true)}
-  Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF091520),Bg,Color(0xFF03070B))))){
+  Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101610),Bg,Color(0xFF03070B))))){
    Header()
    Box(Modifier.weight(1f)){
     when(tab){
@@ -105,10 +105,10 @@ class MainActivity:ComponentActivity(){
 
  @Composable private fun Header(){
   Row(Modifier.fillMaxWidth().padding(18.dp,14.dp),verticalAlignment=Alignment.CenterVertically){
-   Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(Color(0xFF251C0D),Color(0xFF0D202D)))).border(1.dp,Gold.copy(.7f),RoundedCornerShape(15.dp)),contentAlignment=Alignment.Center){Text("E",color=Gold2,fontSize=24.sp,fontWeight=FontWeight.Black)}
+   Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(Color(0xFF251C0D),Color(0xFF0D202D)))).border(1.dp,Gold.copy(.7f),RoundedCornerShape(15.dp)),contentAlignment=Alignment.Center){androidx.compose.foundation.Image(painter=androidx.compose.ui.res.painterResource(com.example.riskscanner.R.drawable.ic_ers),contentDescription="ERS",modifier=Modifier.size(40.dp))}
    Spacer(Modifier.width(11.dp))
    Column(Modifier.weight(1f)){Text("ERS",color=Gold2,fontSize=21.sp,fontWeight=FontWeight.Black,letterSpacing=2.sp);Text("EXCHANGE RISK SCANNER",color=Muted,fontSize=9.sp,letterSpacing=1.3.sp)}
-   Pill("SYSTEM SECURE",Green)
+   Pill("DEVICE CHECK",Green)
   }
  }
 
@@ -125,11 +125,11 @@ class MainActivity:ComponentActivity(){
     Spacer(Modifier.height(14.dp));HorizontalDivider(color=Line);Spacer(Modifier.height(14.dp))
     Button(onClick={if(latest==null)start() else open(latest)},modifier=Modifier.fillMaxWidth().height(50.dp),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Bg)){Text(if(latest==null)"START SECURITY SCAN" else "VIEW LATEST REPORT",fontWeight=FontWeight.Black)}
    }
-   Label("OVERVIEW")
-   Row(horizontalArrangement=Arrangement.spacedBy(9.dp)){Metric("SCANS",history.size.toString(),Cyan,Modifier.weight(1f));Metric("SAFE",history.count{it.result.level=="LOW"}.toString(),Green,Modifier.weight(1f));Metric("RISK",history.count{it.result.level!="LOW"}.toString(),Amber,Modifier.weight(1f))}
+   Label("점검 현황")
+   Row(horizontalArrangement=Arrangement.spacedBy(9.dp)){Metric("거래소",history.map{it.name}.distinct().size.toString(),Gold,Modifier.weight(1f));Metric("높음",history.count{it.result.level=="HIGH"}.toString(),Red,Modifier.weight(1f));Metric("보통",history.count{it.result.level=="MEDIUM"}.toString(),Amber,Modifier.weight(1f));Metric("낮음",history.count{it.result.level=="LOW"}.toString(),Green,Modifier.weight(1f))}
    Label("QUICK CHECK")
-   Panel(){Check("Network Integrity","VPN·연결 유형","NETWORK");Check("Device Integrity","루팅·에뮬레이터","DEVICE");Check("Identity Region","KYC·기기 국가","KYC");Check("Security State","잠금화면·보안 패치","SECURE")}
-   if(history.isNotEmpty()){Label("RECENT ACTIVITY");history.take(3).forEach{r->HistoryRow(r){open(r)}}}
+   Panel(){Check("Network Integrity","VPN·연결 유형","NETWORK");Check("Device Integrity","루팅·에뮬레이터","DEVICE");Check("Identity Region","입력 국가·기기 언어 지역","KYC");Check("Security State","잠금화면·보안 패치","SECURE")}
+   if(history.isNotEmpty()){Label("최근 계정 점검");history.take(3).forEach{r->HistoryRow(r){open(r)}}}
    Note("ERS는 기기·계정 환경 자가 점검 도구입니다. 거래소 비공개 규칙을 추정하거나 우회하지 않습니다.",Gold)
   }
  }
@@ -137,30 +137,38 @@ class MainActivity:ComponentActivity(){
  @OptIn(ExperimentalMaterial3Api::class)
  @Composable private fun Scan(ex:Exchange,custom:String,uid:String,country:String,strict:Boolean,setEx:(Exchange)->Unit,setCustom:(String)->Unit,setUid:(String)->Unit,setCountry:(String)->Unit,done:(Record)->Unit){
   var menu by remember{mutableStateOf(false)}
+  var search by remember{mutableStateOf("")}
   var result by remember{mutableStateOf<Record?>(null)}
   var error by remember{mutableStateOf("")}
   val name=if(ex.name=="기타 거래소")custom.trim() else ex.name
   Page{
-   Title("RISK SCAN","스캔 대상과 기준을 설정하세요")
+   Title("ACCOUNT CHECK","계정 추가 및 기기 점검")
    Steps(if(result==null)1 else 3)
    Label("SCAN TARGET")
    Panel(){
-    ExposedDropdownMenuBox(expanded=menu,onExpandedChange={menu=!menu}){
-     OutlinedTextField(value=ex.name,onValueChange={},readOnly=true,label={Text("거래소 선택")},leadingIcon={Mark(ex,34)},trailingIcon={ExposedDropdownMenuDefaults.TrailingIcon(menu)},colors=fields(),modifier=Modifier.fillMaxWidth().menuAnchor())
-     ExposedDropdownMenu(expanded=menu,onDismissRequest={menu=false},modifier=Modifier.background(Card2)){exchanges.forEach{o->DropdownMenuItem(text={Row(verticalAlignment=Alignment.CenterVertically){Mark(o,34);Spacer(Modifier.width(10.dp));Text(o.name,color=Txt)}},onClick={setEx(o);menu=false;result=null},colors=MenuDefaults.itemColors(textColor=Txt,leadingIconColor=Txt,trailingIconColor=Txt,disabledTextColor=Muted))}}
-    }
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable{menu=true}.padding(12.dp),verticalAlignment=Alignment.CenterVertically){Mark(ex,42);Spacer(Modifier.width(12.dp));Text(ex.name,modifier=Modifier.weight(1f));Text("선택 ›",color=Gold)}
+    if(menu){androidx.compose.ui.window.Dialog(onDismissRequest={menu=false},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)){
+     Surface(modifier=Modifier.fillMaxSize(),color=Bg){Column(Modifier.fillMaxSize().padding(20.dp)){
+      Row(verticalAlignment=Alignment.CenterVertically){Text("거래소 선택",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));TextButton(onClick={menu=false}){Text("닫기")}}
+      OutlinedTextField(value=search,onValueChange={search=it},label={Text("거래소 검색")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())
+      Column(Modifier.weight(1f).verticalScroll(rememberScrollState())){exchanges.filter{it.name.contains(search,true)}.forEach{o->
+       Row(Modifier.fillMaxWidth().clickable{setEx(o);menu=false;result=null}.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){Mark(o,42);Spacer(Modifier.width(12.dp));Text(o.name,modifier=Modifier.weight(1f));Text("›",color=Muted)};HorizontalDivider(color=Line)
+      }}
+     }}
+    }}
     if(ex.name=="기타 거래소"){Spacer(Modifier.height(12.dp));OutlinedTextField(value=custom,onValueChange={setCustom(it);result=null},label={Text("거래소 이름")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())}
     Spacer(Modifier.height(12.dp))
     OutlinedTextField(value=uid,onValueChange={setUid(it.filterNot(Char::isWhitespace));result=null},label={Text("거래소 UID")},supportingText={Text("이메일이 아닌 거래소 UID를 입력하세요")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())
     Spacer(Modifier.height(12.dp))
     OutlinedTextField(value=country,onValueChange={setCountry(it.filter(Char::isLetter).uppercase().take(2));result=null},label={Text("KYC 국가 코드")},supportingText={Text("예: KR, JP, US")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())
    }
+   Note("UID 입력만으로 거래소 로그인 이력·KYC 진위·계정 제한 여부를 조회할 수 없습니다. 이 결과는 현재 기기 점검입니다.",Gold)
    Label("SCAN COVERAGE")
-   Panel(){Coverage("VPN 및 네트워크","연결 유형·터널 확인",true);Coverage("기기 무결성","루팅·에뮬레이터 확인",true);Coverage("개발 환경","ADB·개발자 옵션 확인",true);Coverage("국가 일치","KYC·기기 국가 비교",true);Coverage("강화 분석","엄격한 표시 기준",strict)}
+   Panel(){Coverage("VPN 및 네트워크","연결 유형·터널 확인",true);Coverage("기기 무결성","루팅·에뮬레이터 확인",true);Coverage("개발 환경","ADB·개발자 옵션 확인",true);Coverage("국가 일치","입력 국가·기기 언어 지역 비교",true);Coverage("강화 분석","엄격한 표시 기준",strict)}
    if(error.isNotBlank())Note(error,Red)
    Button(onClick={
     error=when{name.isBlank()->"거래소 이름을 입력해 주세요.";uid.length<3->"거래소 UID를 3자 이상 입력해 주세요.";country.length!=2->"KYC 국가 코드를 두 자리로 입력해 주세요.";else->""}
-    if(error.isBlank()){val s=DeviceInspector(this@MainActivity).snapshot();val r=Record(ex,name,uid,country,RiskEngine.evaluate(s,country),s,SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()));result=r;done(r)}
+    if(error.isBlank()){val s=DeviceInspector(this@MainActivity).snapshot();val r=Record(ex,name,uid,country,RiskEngine.evaluate(s,country,strict),s,SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()));result=r;done(r)}
    },modifier=Modifier.fillMaxWidth().height(56.dp),shape=RoundedCornerShape(16.dp),colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Bg)){Text(if(result==null)"RUN FULL SCAN" else "SCAN AGAIN",fontWeight=FontWeight.Black,letterSpacing=1.sp)}
    result?.let{InlineReport(it)}
   }
@@ -187,9 +195,9 @@ class MainActivity:ComponentActivity(){
   Page{
    Title("SETTINGS","ERS 작동 방식을 설정하세요")
    Label("SCAN PREFERENCES")
-   Panel(){Setting("스캔 기록 자동 저장","완료 결과를 기록에 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
+   Panel(){Setting("세션 기록 보관","앱 종료 시 기록은 삭제됩니다",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.3");Info("Engine","ERS Device Guard");Info("Data Mode","On-device only");Info("Network","Logo assets only")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.5");Info("Engine","ERS Device Guard");Info("Data Mode","On-device only");Info("Network","Logo assets only")}
    Label("PRIVACY & SECURITY")
    Note("스캔 데이터는 기기에서만 분석되며 입력한 UID 원문을 외부 서버로 전송하지 않습니다.",Green)
   }
@@ -197,11 +205,11 @@ class MainActivity:ComponentActivity(){
 
  @Composable private fun ReportDialog(r:Record,close:()->Unit){
   val c=levelColor(r.result.level)
-  AlertDialog(onDismissRequest=close,containerColor=Card,title={Column{Label("SECURITY REPORT");Text(r.result.level+" · "+r.result.score+"/100",color=c,fontSize=24.sp,fontWeight=FontWeight.Black)}},text={Column(Modifier.verticalScroll(rememberScrollState())){Info("Exchange",r.name);Info("UID",mask(r.uid));Info("KYC Country",r.country);Info("Device Country",r.snapshot.deviceCountry.ifBlank{"-"});Info("Network",r.snapshot.networkType);HorizontalDivider(color=Line);r.result.signals.forEach{Signal(it)}}},confirmButton={Button(onClick=close,colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Bg)){Text("확인",fontWeight=FontWeight.Bold)}})
+  AlertDialog(onDismissRequest=close,containerColor=Card,title={Column{Label("SECURITY REPORT");Text(r.result.level+" · "+r.result.score+"/100",color=c,fontSize=24.sp,fontWeight=FontWeight.Black)}},text={Column(Modifier.verticalScroll(rememberScrollState())){Info("Exchange",r.name);Info("UID",mask(r.uid));Info("입력 KYC 국가",r.country);Info("기기 언어 지역",r.snapshot.deviceCountry.ifBlank{"-"});Info("Network",r.snapshot.networkType);HorizontalDivider(color=Line);r.result.signals.forEach{Signal(it)}}},confirmButton={Button(onClick=close,colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Bg)){Text("확인",fontWeight=FontWeight.Bold)}})
  }
 
  @Composable private fun Nav(active:Int,select:(Int)->Unit){
-  val names=listOf("HOME","SCAN","HISTORY","SETTINGS")
+  val names=listOf("홈","점검","기록","설정")
   Row(Modifier.fillMaxWidth().background(Card).border(1.dp,Line).navigationBarsPadding().padding(8.dp)){names.forEachIndexed{i,n->Column(Modifier.weight(1f).clip(RoundedCornerShape(13.dp)).clickable{select(i)}.background(if(active==i)Gold.copy(.1f) else Color.Transparent).padding(8.dp),horizontalAlignment=Alignment.CenterHorizontally){Box(Modifier.size(if(active==i)7.dp else 5.dp).clip(CircleShape).background(if(active==i)Gold else Line));Spacer(Modifier.height(5.dp));Text(n,color=if(active==i)Gold2 else Muted,fontSize=9.sp,fontWeight=if(active==i)FontWeight.Bold else FontWeight.Normal)}}}
  }
 
@@ -212,11 +220,11 @@ class MainActivity:ComponentActivity(){
  @Composable private fun Pill(s:String,c:Color){Box(Modifier.clip(RoundedCornerShape(20.dp)).background(c.copy(.09f)).border(1.dp,c.copy(.28f),RoundedCornerShape(20.dp)).padding(9.dp,5.dp)){Text(s,color=c,fontSize=8.sp,fontWeight=FontWeight.Bold)}}
  @Composable private fun Score(n:Int?,c:Color){Box(Modifier.size(67.dp).clip(CircleShape).background(c.copy(.1f)).border(2.dp,c.copy(.55f),CircleShape),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){Text(n?.toString()?:"—",color=c,fontSize=22.sp,fontWeight=FontWeight.Black);Text(if(n==null)"READY" else "SCORE",color=c,fontSize=7.sp)}}}
  @Composable private fun Metric(a:String,b:String,c:Color,m:Modifier){Column(m.clip(RoundedCornerShape(17.dp)).background(Card).border(1.dp,Line,RoundedCornerShape(17.dp)).padding(12.dp)){Text(b,color=c,fontSize=21.sp,fontWeight=FontWeight.Black);Text(a,color=Muted,fontSize=8.sp)}}
- @Composable private fun Check(a:String,b:String,d:String){Row(Modifier.fillMaxWidth().padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(8.dp).clip(CircleShape).background(Green));Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(a,fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text(b,color=Muted,fontSize=10.sp)};Pill(d,Cyan)}}
+ @Composable private fun Check(a:String,b:String,d:String){Row(Modifier.fillMaxWidth().padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(8.dp).clip(CircleShape).background(Muted));Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(a,fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text(b,color=Muted,fontSize=10.sp)};Pill(d,Cyan)}}
  @Composable private fun Coverage(a:String,b:String,on:Boolean){Row(Modifier.fillMaxWidth().padding(vertical=7.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(a,fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text(b,color=Muted,fontSize=10.sp)};Text(if(on)"ON" else "OFF",color=if(on)Green else Muted,fontSize=10.sp,fontWeight=FontWeight.Bold)}}
  @Composable private fun Setting(a:String,b:String,on:Boolean,set:(Boolean)->Unit){Row(Modifier.fillMaxWidth().padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(a,fontSize=13.sp,fontWeight=FontWeight.SemiBold);Text(b,color=Muted,fontSize=10.sp)};Switch(checked=on,onCheckedChange=set,colors=SwitchDefaults.colors(checkedTrackColor=Gold,checkedThumbColor=Bg))}}
  @Composable private fun Info(a:String,b:String){Row(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(a,color=Muted,fontSize=11.sp,modifier=Modifier.weight(1f));Text(b,fontSize=11.sp,fontWeight=FontWeight.SemiBold,textAlign=TextAlign.End,modifier=Modifier.weight(1.4f))}}
- @Composable private fun Signal(s:RiskSignal){Row(Modifier.fillMaxWidth().padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(7.dp).clip(CircleShape).background(if(s.triggered)Red else Green));Spacer(Modifier.width(9.dp));Column(Modifier.weight(1f)){Text(s.label,fontSize=11.sp);Text(if(s.value=="true")"감지됨" else if(s.value=="false")"감지되지 않음" else s.value,color=Muted,fontSize=9.sp)};Text(if(s.triggered)"+"+s.points else "PASS",color=if(s.triggered)Red else Green,fontSize=9.sp,fontWeight=FontWeight.Bold)}}
+ @Composable private fun Signal(s:RiskSignal){Row(Modifier.fillMaxWidth().padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(7.dp).clip(CircleShape).background(if(s.triggered)Red else Green));Spacer(Modifier.width(9.dp));Column(Modifier.weight(1f)){Text(s.label,fontSize=11.sp);Text(if(s.value=="true")"감지됨" else if(s.value=="false")"감지되지 않음" else s.value,color=Muted,fontSize=9.sp)};Text(if(s.value=="확인 불가")"UNKNOWN" else if(s.triggered)"+"+s.points else "PASS",color=if(s.triggered)Red else Green,fontSize=9.sp,fontWeight=FontWeight.Bold)}}
  @Composable private fun Note(s:String,c:Color){Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.copy(.08f)).border(1.dp,c.copy(.25f),RoundedCornerShape(16.dp)).padding(14.dp)){Text(s,color=if(c==Red)Red else Muted,fontSize=11.sp,lineHeight=17.sp)}}
  @Composable private fun Steps(n:Int){Row(horizontalArrangement=Arrangement.spacedBy(7.dp)){repeat(3){i->Box(Modifier.weight(1f).height(3.dp).clip(CircleShape).background(if(i<n)Gold else Line))}}}
  @Composable private fun HistoryRow(r:Record,open:()->Unit){val c=levelColor(r.result.level);Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Card).border(1.dp,Line,RoundedCornerShape(18.dp)).clickable(onClick=open).padding(14.dp),verticalAlignment=Alignment.CenterVertically){Mark(r.exchange,42);Spacer(Modifier.width(11.dp));Column(Modifier.weight(1f)){Text(r.name,fontWeight=FontWeight.Bold);Text("UID "+mask(r.uid)+" · "+r.time,color=Muted,fontSize=10.sp)};Column(horizontalAlignment=Alignment.End){Text(r.result.score.toString(),color=c,fontSize=20.sp,fontWeight=FontWeight.Black);Text(r.result.level,color=c,fontSize=9.sp)}}}

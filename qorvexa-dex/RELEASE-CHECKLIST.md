@@ -1,4 +1,4 @@
-# QORVEXA pre-launch preview 0.2
+# BELTRIX development preview 0.3
 This is a simulation frontend, NOT a release-ready DEX.
 ## Implemented
 - Clearly marked sample market, pool and APR values
@@ -16,3 +16,9 @@ This is a simulation frontend, NOT a release-ready DEX.
 - External wallet/mobile compatibility, real-device iOS and accessibility testing
 - Legal/compliance and brand review, privacy/terms, monitoring, incident response
 - No mainnet deployment until explicitly authorized after these gates
+
+## 0.3 implemented
+- Hyperliquid public mainnet spot/perpetual market metadata and candle chart with volume
+- Candle WebSocket subscription, reconnect, stale-data and failure states
+- Market data is separate from paper swap execution; no real orders or liquidity added
+- Independent security audit is still outstanding
