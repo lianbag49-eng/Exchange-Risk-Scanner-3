@@ -101,7 +101,19 @@ struct ScanView: View {
                 HStack(spacing:7){ForEach(0..<3){i in Capsule().fill(i < (result==nil ? 1:3) ? gold:line).frame(height:3)}}
                 LabelText("SCAN TARGET")
                 CardBox {
-                    Button {showExchanges=true} label:{HStack{Text(exchange.name);Spacer();Image(systemName:"chevron.right")}}.sheet(isPresented:$showExchanges){NavigationStack{List(store.exchanges.filter{search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)}){item in Button(item.name){exchange=item;result=nil;showExchanges=false}}.searchable(text:$search,prompt:"거래소 검색").navigationTitle("거래소 선택").toolbar{Button("닫기"){showExchanges=false}}.preferredColorScheme(.dark)}
+                    Button { showExchanges=true } label: {
+                        HStack { Text(exchange.name); Spacer(); Image(systemName:"chevron.right") }
+                    }
+                    .sheet(isPresented:$showExchanges) {
+                        NavigationStack {
+                            List(store.exchanges.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }) { item in
+                                Button(item.name) { exchange=item; result=nil; showExchanges=false }
+                            }
+                            .searchable(text:$search,prompt:"거래소 검색")
+                            .navigationTitle("거래소 선택")
+                            .toolbar { ToolbarItem(placement:.topBarTrailing) { Button("닫기") { showExchanges=false } } }
+                        }.preferredColorScheme(.dark)
+                    }
                     Divider().background(line)
                     if exchange.name=="기타 거래소" { DarkField("거래소 이름",text:$custom) }
                     DarkField("거래소 UID",text:$uid)

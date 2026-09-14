@@ -9,6 +9,7 @@ export function makeOrder(market,price,size,isBuy,reduceOnly,tif){
  if(Number(price)*Number(size)<10)throw Error('주문 금액은 최소 10 USDC');
  if(!['Gtc','Alo'].includes(tif))throw Error('지원하지 않는 주문 유형');
  if(market.spot&&reduceOnly)throw Error('현물은 포지션 축소 전용을 지원하지 않습니다');
- return {a:market.asset,b:isBuy,p:String(Number(price)),s:String(Number(size)),r:reduceOnly,t:{limit:{tif}}};
+ const canonical=s=>s.includes('.')?s.replace(/0+$/,'').replace(/\.$/,''):s;
+ return {a:market.asset,b:isBuy,p:canonical(price),s:canonical(size),r:reduceOnly,t:{limit:{tif}}};
 }
 export function freshMarket(m){return m?.network==='testnet'&&m?.book?.coin===m?.market?.value&&Date.now()-m.received<5000&&Math.abs(Date.now()-m.book.time)<10000;}
