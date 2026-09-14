@@ -32,10 +32,10 @@ function clearAccount(message='지갑을 연결하면 테스트넷 계정이 표
  for(const id of ['positions','openOrders','fills','liveBalances'])$(id).textContent='—';
 }
 function invalidate(){review=null;if(!$('orderDialog').open)return;$('submitOrder').disabled=true;$('submitState').textContent='계정 또는 시장이 변경됐습니다. 주문을 다시 확인하세요.';}
-function disconnect(){address=null;wallet=null;accountEpoch++;invalidate();clearAccount();$('walletBtn').textContent='CONNECT WALLET';$('walletAddress').textContent='Hyperliquid 테스트넷 계정 미연결';$('ethBal').textContent='—';}
+function disconnect(){address=null;wallet=null;accountEpoch++;invalidate();clearAccount();$('walletBtn').textContent='CONNECT WALLET';$('walletAddress').textContent='Hyperliquid 테스트넷 계정 미연결';}
 const chart=createChart($('chart'),{autoSize:true,layout:{background:{color:'#0b131f'},textColor:'#a0aec0',attributionLogo:true},grid:{vertLines:{color:'#172334'},horzLines:{color:'#172334'}},rightPriceScale:{borderColor:'#26384d'},timeScale:{timeVisible:true,borderColor:'#26384d'},crosshair:{mode:0}});
 const candles=chart.addSeries(CandlestickSeries,{upColor:'#54dfa0',downColor:'#ff6678',borderVisible:false,wickUpColor:'#54dfa0',wickDownColor:'#ff6678'});
-const volumes=chart.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceScaleId:'volume'});chart.priceScale('volume').applyOptions({scaleMargins:{top:0.84,bottom:0}});
+const volumes=chart.addSeries(HistogramSeries,{priceFormat:{type:'volume'},priceScaleId:'volume',lastValueVisible:false,priceLineVisible:false});chart.priceScale('volume').applyOptions({scaleMargins:{top:0.84,bottom:0}});
 let initialChart=true,streamLatest=null,socket=null,reconnectTimer=null,heartbeat=null,lastStreamBook=0;
 async function loadMarkets(){
  const epoch=++marketEpoch,net=network,type=kind;stopStream();invalidate();market=null;book=null;bookAt=0;
@@ -148,7 +148,7 @@ function estimate(){
 $('market').onchange=selectMarket;
 $('marketType').onchange=()=>{kind=$('marketType').value;loadMarkets();};
 $('dataNetwork').onchange=()=>{network=$('dataNetwork').value;loadMarkets();};
-$('interval').onchange=()=>{initialChart=true;streamLatest=null;stopStream();loadChart();startStream();};
+$('interval').onchange=()=>{marketEpoch++;invalidate();initialChart=true;streamLatest=null;loadingChart=false;loadingBook=false;bookAt=0;stopStream();candles.setData([]);volumes.setData([]);$('chartStatus').textContent='새 봉 간격을 불러오는 중…';loadBook();loadChart();startStream();};
 for(const id of ['orderSize','limitPrice','leverage','marketSlippage','postOnly','reduceOnly'])$(id).addEventListener('input',()=>{invalidate();estimate()});
 $('orderType').onchange=()=>{invalidate();const isMarket=$('orderType').value==='market';$('limitRow').hidden=isMarket;$('postOnlyRow').hidden=isMarket;$('marketSlippageRow').hidden=!isMarket;estimate();};
 function side(b){buy=b;$('buy').classList.toggle('selected',b);$('sell').classList.toggle('selected',!b);$('buy').setAttribute('aria-pressed',String(b));$('sell').setAttribute('aria-pressed',String(!b));invalidate();estimate()}

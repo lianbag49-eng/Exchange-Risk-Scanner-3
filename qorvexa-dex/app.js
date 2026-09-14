@@ -33,6 +33,7 @@ function render(){
  $('rate').textContent='1 '+from+' = '+(PRICES[from]/PRICES[to]).toFixed(6)+' '+to+' (reference)';
  $('swapBtn').textContent='REVIEW SIMULATION';
  $('portfolioValue').textContent='$'+Object.keys(PRICES).reduce((n,k)=>n+state.balances[k]*PRICES[k],0).toFixed(2);
+ $('paperBalances').textContent=Object.entries(state.balances).map(([coin,qty])=>coin+' '+qty.toFixed(6)).join(' · ');
  $('activity').replaceChildren();$('activity').classList.remove('empty');
  if(!state.records.length){$('activity').textContent='아직 모의 거래가 없습니다.';$('activity').classList.add('empty')}
  for(const r of state.records){
