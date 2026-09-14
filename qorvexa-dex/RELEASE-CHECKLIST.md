@@ -35,3 +35,11 @@ This is a simulation frontend, NOT a release-ready DEX.
 - Pending external verification: funded testnet wallet order/partial-fill/cancel cycle; actual liquidity funding; independent security audit; real iPhone wallet compatibility.
 - ERS: Android encrypted record persistence, iOS Keychain record storage, worker entry, search, remediation hints and expanded local device checks.
 - ERS public IP/ISP/KYC/login history remain unavailable without a verified external data integration. Official logo endpoints may block requests and must not be described as verified offline logo assets.
+
+## English UI simplification
+
+- Trade is the default page; navigation is Trade, Practice, Settings.
+- Live chart and testnet ticket share one screen. Depth/trades expand on demand.
+- Removed demo overview/pools and the separate Base Sepolia wallet connector.
+- Practice balances/history remain available together; all built-in labels and messages use English.
+- Existing market/order safeguards are unchanged. CI covers English navigation, mobile width, simulation, stream freshness and mocked testnet signing.
