@@ -1,0 +1,26 @@
+{
+  "name": "qorvexa-dex",
+  "version": "0.4.0",
+  "description": "",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "playwright test --config=playwright.config.cjs",
+    "check": "node --check app.js && node --check terminal.js"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.33.3",
+    "lightweight-charts": "5.2.1",
+    "viem": "2.56.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "esbuild": "0.28.2"
+  },
+  "private": true
+}

@@ -77,38 +77,4 @@ $('exportBtn').onclick=()=>{
  const csv=['time,from,to,amount,output,mode',...state.records.map(r=>[r.time,r.from,r.to,r.amount,r.output,'SIMULATION'].join(','))].join('\n');
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='qorvexa-simulation.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-function disconnected(){
- account=null;$('walletBtn').textContent='CONNECT WALLET';$('walletAddress').textContent='조회 전용 지갑 연결 · 모의 거래는 연결 없이 이용 가능';$('ethBal').textContent='—';
-}
-async function refreshWallet(){
- if(!provider||!account)return;
- const chain=await provider.request({method:'eth_chainId'});
- if(chain!=='0x14a34'){disconnected();toast('Base Sepolia가 아닙니다. 지갑을 다시 연결하세요');return}
- const current=account;
- const balance=await provider.request({method:'eth_getBalance',params:[current,'latest']});
- if(account!==current)return;
- $('ethBal').textContent=(Number(BigInt(balance))/1e18).toFixed(6);
- $('walletAddress').textContent=current+' · Base Sepolia 조회 전용';
-}
-$('walletBtn').onclick=async()=>{
- if(connecting)return;
- if(account){disconnected();return toast('앱의 지갑 연결을 해제했습니다. 지갑 앱 권한은 별도로 관리하세요')}
- if(!window.ethereum)return toast('MetaMask 등 호환 지갑의 내장 브라우저에서 열어주세요. 모의 거래는 여기서도 가능합니다.');
- connecting=true;$('walletBtn').disabled=true;
- try{
- provider=window.ethereum;
- const accounts=await provider.request({method:'eth_requestAccounts'});
- if(!/^0x[a-fA-F0-9]{40}$/.test(accounts?.[0]||''))throw Error('계정 없음');
- try{await provider.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x14a34'}]})}
- catch(e){if(e.code!==4902)throw e;await provider.request({method:'wallet_addEthereumChain',params:[{chainId:'0x14a34',chainName:'Base Sepolia',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://sepolia.base.org'],blockExplorerUrls:['https://sepolia.basescan.org']}]})}
- if(await provider.request({method:'eth_chainId'})!=='0x14a34')throw Error('네트워크 불일치');
- account=accounts[0];await refreshWallet();
- if(account)$('walletBtn').textContent=account.slice(0,6)+'…'+account.slice(-4)+' ×';
- }catch{disconnected();toast('연결 또는 네트워크 변경에 실패했습니다. 모의 거래는 계속 가능합니다')}
- finally{connecting=false;$('walletBtn').disabled=false}
-};
-window.ethereum?.on?.('accountsChanged',()=>disconnected());
-window.ethereum?.on?.('chainChanged',()=>disconnected());
-window.ethereum?.on?.('disconnect',()=>disconnected());
-disconnected();render();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+render();

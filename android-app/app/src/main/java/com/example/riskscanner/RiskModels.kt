@@ -1,6 +1,6 @@
 package com.example.riskscanner
 
-data class RiskSignal(val label: String, val value: String, val points: Int, val triggered: Boolean)
+data class RiskSignal(val label: String, val value: String, val points: Int, val triggered: Boolean, val advice: String = "", val checked: Boolean = true)
 data class RiskResult(val score: Int, val level: String, val signals: List<RiskSignal>)
 data class DeviceSnapshot(
     val deviceCountry: String,
@@ -13,5 +13,7 @@ data class DeviceSnapshot(
     val developerOptions: Boolean,
     val adbEnabled: Boolean,
     val secureLockScreen: Boolean,
-    val securityPatch: String
+    val securityPatch: String,
+    val proxyConfigured: Boolean = false,
+    val networkValidated: Boolean = false
 )

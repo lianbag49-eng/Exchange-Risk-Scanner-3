@@ -22,7 +22,11 @@ class DeviceInspector(private val context: Context) {
         developerOptions = setting(Settings.Global.DEVELOPMENT_SETTINGS_ENABLED),
         adbEnabled = setting(Settings.Global.ADB_ENABLED),
         secureLockScreen = (context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isDeviceSecure,
-        securityPatch = Build.VERSION.SECURITY_PATCH ?: ""
+        securityPatch = Build.VERSION.SECURITY_PATCH ?: "",
+        proxyConfigured = (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).defaultProxy != null,
+        networkValidated = (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).let { cm ->
+            cm.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+        }
     )
 
     private fun setting(name: String): Boolean = try {

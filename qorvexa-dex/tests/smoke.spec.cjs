@@ -1,7 +1,7 @@
 
 const {test,expect}=require('@playwright/test');
 test('simulation validation, confirm, persistence and settings',async({page})=>{
- await page.goto('/qorvexa-dex/');
+ await page.goto('/qorvexa-dex/dist/');
  await page.getByRole('button',{name:'SWAP',exact:true}).click();
  await page.locator('#pay').fill('999');
  await page.locator('#swapBtn').click();
@@ -35,7 +35,7 @@ test('reject wrong chain and never send or sign',async({page})=>{
  if(x.method==='eth_chainId')return '0x1';throw Error('Unexpected RPC');
  }};
  });
- await page.goto('/qorvexa-dex/');
+ await page.goto('/qorvexa-dex/dist/');
  await page.locator('#walletBtn').click();
  await expect(page.locator('#walletBtn')).toHaveText('CONNECT WALLET');
  const calls=await page.evaluate(()=>window.calls);
@@ -44,8 +44,8 @@ test('reject wrong chain and never send or sign',async({page})=>{
 });
 test('mobile layout and navigation',async({page})=>{
  await page.setViewportSize({width:390,height:844});
- await page.goto('/qorvexa-dex/');
- for(const name of ['OVERVIEW','SWAP','POOLS','PORTFOLIO','SETTINGS']){
+ await page.goto('/qorvexa-dex/dist/');
+ for(const name of ['TRADE','OVERVIEW','SWAP','LIQUIDITY','PORTFOLIO','SETTINGS']){
  await page.getByRole('button',{name,exact:true}).click();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  }

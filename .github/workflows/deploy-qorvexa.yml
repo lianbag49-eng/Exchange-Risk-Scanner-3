@@ -1,7 +1,7 @@
-name: Deploy QORVEXA Testnet
+name: Validate and Deploy BELTRIX Testnet
 on:
   push:
-    branches: [main]
+    branches: [main, codex/ers-hyperliquid]
     paths: ['qorvexa-dex/**','.github/workflows/deploy-qorvexa.yml']
   workflow_dispatch:
 permissions:
@@ -9,42 +9,52 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: qorvexa-pages
+  group: beltrix-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}qorvexa-dex/
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install browser tests
-        run: npm install --no-save @playwright/test@1.51.1
+          cache: npm
+          cache-dependency-path: qorvexa-dex/package-lock.json
+      - name: Install locked dependencies
+        working-directory: qorvexa-dex
+        run: npm ci
+      - name: Build and validate JavaScript
+        working-directory: qorvexa-dex
+        run: npm run check && npm run build
       - name: Install Chromium
+        working-directory: qorvexa-dex
         run: npx playwright install --with-deps chromium
-      - name: Validate JavaScript
-        run: node --check qorvexa-dex/app.js
-      - name: Test prototype
-        run: npx playwright test --config=qorvexa-dex/playwright.config.cjs
+      - name: Test trading guards and UI
+        working-directory: qorvexa-dex
+        run: npm test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: qorvexa-test-results
-          path: test-results/
+          name: beltrix-test-results
+          path: qorvexa-dex/test-results/
       - name: Prepare web-only artifact
         run: |
           mkdir -p public/qorvexa-dex
-          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
+          cp -R qorvexa-dex/dist/. public/qorvexa-dex/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beltrix-web-build
+          path: public/
       - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main'
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: public
       - name: Deploy
+        if: github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v4
