@@ -1,1 +1,17 @@
-{"name":"BELTRIX DEX Testnet","short_name":"BELTRIX","start_url":"./","display":"standalone","background_color":"#05080e","theme_color":"#070b12","description":"BELTRIX decentralized exchange testnet prototype","icons":[{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "BELTRIX Wallet & DEX",
+  "short_name": "BELTRIX",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#08090b",
+  "theme_color": "#08090b",
+  "description": "BELTRIX decentralized exchange testnet prototype",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

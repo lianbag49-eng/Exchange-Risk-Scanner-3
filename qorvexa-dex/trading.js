@@ -11,9 +11,10 @@ function clearPending(){pending=null;$('tradeDialog').close()}
 window.addEventListener('beltrix:market',e=>{if(market?.market?.value!==e.detail.market?.value||market?.network!==e.detail.network)clearPending();market=e.detail;availability()});
 async function guard(requireFresh=true){if(!client||!account||market?.network!=='testnet'||$('marketNetwork').value!=='testnet'||(requireFresh&&!freshMarket(market)))throw Error('Check the testnet connection and fresh order book');const accounts=await provider.request({method:'eth_accounts'});const chain=await provider.request({method:'eth_chainId'});if(accounts[0]?.toLowerCase()!==account.toLowerCase()||chain!=='0x66eee')throw Error('Wallet account or network changed');}
 $('tradeConnect').onclick=async()=>{if(busy)return;window.openPage?.('markets');if(client){disconnect();status('Wallet disconnected');return}busy=true;availability();try{
- if(!window.ethereum)throw Error('On mobile, open this page in a compatible wallet browser');
+ const selectedProvider=window.beltrixWallet?.provider||window.okxwallet||window.ethereum;
+ if(!selectedProvider)throw Error('On mobile, open this page in a compatible wallet browser');
  if(provider){provider.removeListener?.('accountsChanged',disconnect);provider.removeListener?.('chainChanged',disconnect);provider.removeListener?.('disconnect',disconnect)}
- disconnect();provider=window.ethereum;const accounts=await provider.request({method:'eth_requestAccounts'});const selected=accounts[0];if(!/^0x[0-9a-f]{40}$/i.test(selected))throw Error('Unable to verify wallet address');
+ disconnect();provider=selectedProvider;const accounts=await provider.request({method:'eth_requestAccounts'});const selected=accounts[0];if(!/^0x[0-9a-f]{40}$/i.test(selected))throw Error('Unable to verify wallet address');
  try{await provider.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x66eee'}]})}catch(e){if(e.code!==4902)throw e;await provider.request({method:'wallet_addEthereumChain',params:[{chainId:'0x66eee',chainName:'Arbitrum Sepolia',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://sepolia-rollup.arbitrum.io/rpc'],blockExplorerUrls:['https://sepolia.arbiscan.io']}]})}
  if(await provider.request({method:'eth_chainId'})!=='0x66eee')throw Error('Wallet did not switch to testnet');
  const actual=await provider.request({method:'eth_accounts'});if(actual[0]?.toLowerCase()!==selected.toLowerCase())throw Error('Wallet account changed');account=selected;

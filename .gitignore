@@ -4,3 +4,5 @@ public/
 qorvexa-dex/trading.bundle.js
 android-app/.gradle/
 **/build/
+
+qorvexa-dex/wallet.bundle.js

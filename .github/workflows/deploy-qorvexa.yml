@@ -1,7 +1,7 @@
 name: Deploy BELTRIX Testnet
 on:
   push:
-    branches: [main]
+    branches: [main, codex/beltrix-wallet]
     paths: ['qorvexa-dex/**','.github/workflows/deploy-qorvexa.yml','package.json','package-lock.json']
   workflow_dispatch:
 permissions:
@@ -9,7 +9,7 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: qorvexa-pages
+  group: qorvexa-pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   deploy:
@@ -24,7 +24,9 @@ jobs:
           node-version: '22'
       - name: Install browser tests
         run: npm ci
-      - name: Bundle testnet client
+      - name: Validate wallet transaction logic
+        run: npm run test:unit
+      - name: Bundle wallet and testnet clients
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -37,16 +39,30 @@ jobs:
         with:
           name: qorvexa-test-results
           path: test-results/
+      - name: Emit compact UI previews
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import base64,io
+          for p in Path("test-results").glob("wallet-*.png"):
+            im=Image.open(p).convert("RGB");im.thumbnail((1100,1500));b=io.BytesIO();im.save(b,format="JPEG",quality=72)
+            print("WALLET_UI_"+p.stem+":"+base64.b64encode(b.getvalue()).decode())
+          PY
       - name: Prepare web-only artifact
         run: |
           mkdir -p public/qorvexa-dex
-          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/trading.bundle.js qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
+          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/trading.bundle.js qorvexa-dex/wallet.bundle.js qorvexa-dex/wallet.css qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
       - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main'
         with:
           enablement: true
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: public
       - name: Deploy
+        if: github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v4

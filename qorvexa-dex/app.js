@@ -15,9 +15,11 @@ function toast(s){$('toast').textContent=s;$('toast').classList.add('show');clea
 window.toast=toast;
 window.openPage=id=>{
  document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===id));
- document.querySelectorAll('.nav button').forEach(x=>{x.classList.toggle('active',x.dataset.page===id);x.setAttribute('aria-current',x.dataset.page===id?'page':'false')});
+ document.querySelectorAll('[data-page]').forEach(x=>{x.classList.toggle('active',x.dataset.page===id);x.setAttribute('aria-current',x.dataset.page===id?'page':'false')});
+ document.body.dataset.page=id;
+ window.dispatchEvent(new CustomEvent('beltrix:page',{detail:id}));
 };
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>window.openPage(b.dataset.page));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b&&document.getElementById(b.dataset.page)){window.openPage(b.dataset.page);window.scrollTo({top:0,behavior:'instant'});}});
 function save(){try{if(state.persist)localStorage.setItem(KEY,JSON.stringify(state));else localStorage.removeItem(KEY)}catch{toast('Storage unavailable: changes last for this session only')}}
 function validAmount(value){return /^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(value)&&Number(value)>0&&Number.isFinite(Number(value))}
 function quote(){

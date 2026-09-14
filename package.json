@@ -1,1 +1,18 @@
-{"name":"beltrix-workspace","private":true,"scripts":{"build":"esbuild qorvexa-dex/trading.js --bundle --format=esm --target=es2022 --outfile=qorvexa-dex/trading.bundle.js","test":"playwright test --config=qorvexa-dex/playwright.config.cjs"},"dependencies":{"@nktkas/hyperliquid":"0.33.3","viem":"2.56.5"},"devDependencies":{"@playwright/test":"1.63.0","esbuild":"0.25.9"}}
+{
+  "name": "beltrix-workspace",
+  "private": true,
+  "scripts": {
+    "build": "node qorvexa-dex/build.mjs",
+    "test": "playwright test --config=qorvexa-dex/playwright.config.cjs",
+    "test:unit": "node --test qorvexa-dex/tests/wallet-core.test.mjs"
+  },
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.33.3",
+    "qrcode": "1.5.4",
+    "viem": "2.56.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "esbuild": "0.25.9"
+  }
+}
