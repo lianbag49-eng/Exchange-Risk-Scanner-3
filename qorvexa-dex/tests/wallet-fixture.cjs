@@ -17,7 +17,7 @@ async function fixture(page,options={}){
    if(method==='eth_getCode')return '0x';
    if(method==='eth_call'){const data=x.params[0].data||'';if(data.startsWith('0x313ce567'))return f.decimals;if(data.startsWith('0x95d89b41'))return f.symbol;if(data.startsWith('0x06fdde03'))return f.name;if(data.startsWith('0x70a08231'))return f.tokenBalance;if(data.startsWith('0xdd62ed3e'))return f.allowance;if(data.startsWith('0xa9059cbb'))return f.failTransfer?f.no:f.yes;if(data.startsWith('0x095ea7b3'))return f.yes;throw Error('Unexpected call '+data);}
    if(method==='eth_sendTransaction'){f.sent.push(x.params[0]);if(f.rejected)throw {code:4001,message:'User rejected the request'};if(f.unknown)throw {code:-32002,message:'Wallet response unavailable'};return f.HASH;}
-   if(method==='eth_getTransactionReceipt')return null;
+   if(method==='eth_getTransactionReceipt')return f.receipt?{transactionHash:f.HASH,transactionIndex:'0x0',blockHash:'0x'+'b'.repeat(64),blockNumber:'0x10000',from:f.receipt==='mismatch'?f.T:f.A,to:f.B,cumulativeGasUsed:'0x5208',gasUsed:'0x5208',effectiveGasPrice:'0x3b9aca00',status:f.receipt==='failed'?'0x0':'0x1',logs:[],logsBloom:'0x'+'0'.repeat(512),type:'0x0',contractAddress:null}:null;
    if(method==='eth_blockNumber')return '0x10000';
    if(method==='eth_getLogs')return [];
    throw Error('Unexpected RPC '+method);

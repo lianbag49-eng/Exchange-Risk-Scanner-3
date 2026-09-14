@@ -20,7 +20,7 @@ export function amount(value,decimals){
 }
 export function displayAmount(raw,decimals,max=8){
  if(raw===null||raw===undefined)return '—';
- try{const s=formatUnits(BigInt(raw),decimals),[w,f]=s.split('.');return w+(f?'.'+f.slice(0,max).replace(/0+$/,''):'').replace(/\.$/,'');}catch{return '—';}
+ try{const s=formatUnits(BigInt(raw),decimals),[w,f]=s.split('.');if(BigInt(raw)>0n&&w==='0'&&f&&!/[1-9]/.test(f.slice(0,max)))return '<0.'+'0'.repeat(Math.max(0,max-1))+'1';return w+(f?'.'+f.slice(0,max).replace(/0+$/,''):'').replace(/\.$/,'');}catch{return '—';}
 }
 export function transferRequest({from,to,token,quantity}){
  const sender=address(from),recipient=address(to);

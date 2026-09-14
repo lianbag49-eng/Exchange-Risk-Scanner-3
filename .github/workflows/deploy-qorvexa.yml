@@ -41,11 +41,9 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          from PIL import Image
-          import base64,io
-          for p in Path("test-results").glob("wallet-*.png"):
-            im=Image.open(p).convert("RGB");im.thumbnail((1100,1500));b=io.BytesIO();im.save(b,format="JPEG",quality=72)
-            print("WALLET_UI_"+p.stem+":"+base64.b64encode(b.getvalue()).decode())
+          import base64
+          for p in Path("test-results").glob("wallet-*.jpg"):
+            print("WALLET_UI_"+p.stem+":"+base64.b64encode(p.read_bytes()).decode())
           PY
       - name: Prepare web-only artifact
         run: |
