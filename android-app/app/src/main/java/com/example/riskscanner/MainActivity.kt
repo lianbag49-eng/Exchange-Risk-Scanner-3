@@ -99,7 +99,9 @@ class MainActivity:ComponentActivity(){
   var preventionError by remember{mutableStateOf("")}
   var preventionDraft by remember{mutableStateOf<PreventionCase?>(null)}
   LaunchedEffect(Unit){try{preventionCases=withContext(Dispatchers.IO){preventionStorage.load()}}catch(e:Exception){preventionError="원인 기록 복구 실패 · 기존 기록 보존을 위해 저장이 잠겨 있습니다"}finally{preventionLoading=false}}
-  val preflight=rememberPreflight(this,installed,preventionCases,accountAudit||discovery||discoveryRecord!=null||detail!=null||preventionDraft!=null||preflightSettings||officialVerification,preflightConfigRevision)
+  val scanBlocked=preventionLoading||accountAudit||discovery||discoveryRecord!=null||detail!=null||preventionDraft!=null||preflightSettings||officialVerification
+  val preflight=rememberPreflight(this,installed,preventionCases,scanBlocked,preflightConfigRevision,useLegacyAi=false)
+  val startup=rememberStartup(this,installed,preflight,scanBlocked)
   fun saveCase(case:PreventionCase){
    check(!preventionLoading&&preventionError.isEmpty())
    val next=if(preventionCases.any{it.id==case.id})preventionCases.map{if(it.id==case.id)case else it} else listOf(case)+preventionCases
@@ -128,7 +130,7 @@ class MainActivity:ComponentActivity(){
      0->PreventionHome(installed,preventionCases,preventionLoading,preventionError,
       onRecord={exchange,app->preventionDraft=PreventionCase(app=app,exchangeName=exchange.name,exchangeInfoUrl=exchange.infoUrl)},
       onInspect={exchange,app->inspect(fromCmc(exchange),app)},onCase={preventionDraft=it},onDiscovery={discovery=true},onAccounts={tab=2},
-      onReset={try{preventionStorage.reset();preventionCases=emptyList();preventionError=""}catch(_:Exception){preventionError="원인 기록 삭제 실패"}},exchanges=exchanges,preflight=preflight,onAiSettings={preflightSettings=true},onOfficialVerification={officialVerification=true})
+      onReset={try{preventionStorage.reset();preventionCases=emptyList();preventionError=""}catch(_:Exception){preventionError="원인 기록 삭제 실패"}},exchanges=exchanges,preflight=preflight,onAiSettings={preflightSettings=true},onOfficialVerification={officialVerification=true},startup=startup)
      1->Scan(ex,custom,uid,country,strict,{ex=it},{custom=it},{uid=it},{country=it}){r->latest=r;if(save){records.add(0,r);if(records.size>200)records.removeAt(records.lastIndex);persist(records)};detail=r}
      2->History(records,{detail=it},{records.clear();persist(records)})
      else->Settings(save,strict,tips,privacy,{save=it;prefs.edit().putBoolean("save",it).apply()},{strict=it;prefs.edit().putBoolean("strict",it).apply()},{tips=it;prefs.edit().putBoolean("tips",it).apply()},{privacy=it;prefs.edit().putBoolean("privacy",it).apply()})

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {createStartup} from './startup.mjs';
 import {validateCauses,reviewCauses} from './causes.mjs';
 import {validatePreflight,reviewPreflight} from './preflight.mjs';
 import {identityConfig,validateIdentity,readIdentity} from './identity.mjs';
@@ -7,12 +8,14 @@ import {pathToFileURL} from 'node:url';
 import {ReviewError,validateInput,reviewImage} from './review.mjs';
 import {validateDiagnostic,diagnoseImage,providerStatus} from './diagnostics.mjs';
 const hash=s=>createHash('sha256').update(s).digest();
-export function createService({apiKey,model,tokens,review=reviewImage,diagnose=diagnoseImage,checkProvider=providerStatus,preflight=reviewPreflight,causes=reviewCauses,identity=readIdentity,identitySettings=null,now=Date.now}){
+export function createService({apiKey,model,tokens,review=reviewImage,diagnose=diagnoseImage,checkProvider=providerStatus,preflight=reviewPreflight,causes=reviewCauses,identity=readIdentity,identitySettings=null,now=Date.now,startupOptions={}}){
  if(!apiKey||!model||!tokens||!Object.keys(tokens).length||Object.keys(tokens).length>100||Object.values(tokens).some(t=>typeof t!=='string'||t.length<32)||new Set(Object.values(tokens)).size!==Object.keys(tokens).length)throw Error('Configure OPENAI_API_KEY, OPENAI_MODEL and distinct ERS_REVIEW_TOKENS (min 32 characters each).');
  const users=Object.entries(tokens).map(([id,token])=>({id,digest:hash(token)})),rates=new Map(),seen=new Map();let active=0;
+ const startup=createStartup({apiKey,model,now,...startupOptions});
  const server=http.createServer(async(req,res)=>{
   const send=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
   if(req.method==='GET'&&req.url==='/healthz')return send(200,{status:'ready'});
+  if(await startup(req,send))return;
   if(req.method!=='POST'||!['/v1/kyc/reviews','/v1/diagnostics','/v1/connection-check','/v1/preflight','/v1/identity/status','/v1/causes'].includes(req.url))return send(404,{error:'not_found'});
   const raw=req.headers.authorization||'';const supplied=hash(raw.startsWith('Bearer ')?raw.slice(7):'');const user=users.find(x=>timingSafeEqual(x.digest,supplied));
   if(!user)return send(401,{error:'unauthorized'});
