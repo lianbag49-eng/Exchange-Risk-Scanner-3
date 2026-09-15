@@ -23,6 +23,8 @@ class ERSUiTest {
  @Test fun offlineLogosAndAccountJourney(){
   val catalog=ExchangeCatalog.load(ui.activity);assertTrue(catalog.size>=2449);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
+  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("home-rescan") and isEnabled()).fetchSemanticsNodes().size==1}
+  ui.onNodeWithTag("prevention-home").assertExists()
   screenshot("home")
   ui.onNodeWithTag("open-exchange-discovery").performClick()
   ui.waitUntil(15000){ui.onAllNodes(hasTestTag("rescan-installed") and isEnabled()).fetchSemanticsNodes().size==1}

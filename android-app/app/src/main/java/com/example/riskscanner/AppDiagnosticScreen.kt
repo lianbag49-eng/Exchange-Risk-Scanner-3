@@ -55,7 +55,7 @@ import kotlinx.coroutines.withContext
  Text("실제 원인·공식 계정 상태 미확정. 선택한 앱과 이미지 출처의 동일성은 사용자 확인이 필요합니다.\n${report.reviewedAt} · ${report.model}",style=MaterialTheme.typography.bodySmall)
 }
 
-@Composable fun AppDiagnosticDialog(record:Record,persisted:Boolean,onSave:(AppDiagnosticReport)->Unit,initialApp:DiagnosticApp?=null,close:()->Unit){
+@Composable fun AppDiagnosticDialog(record:Record,persisted:Boolean,onSave:(AppDiagnosticReport)->Unit,initialApp:DiagnosticApp?=null,saveLabel:String?=null,close:()->Unit){
  val context=LocalContext.current;val scope=rememberCoroutineScope();val owner=remember{UUID.randomUUID().toString()}
  val prefs=remember{context.getSharedPreferences("ers_ai_review",0)}
  var endpoint by remember{mutableStateOf(reviewServerAddress(prefs.getString("endpoint",null)))};var token by remember{mutableStateOf("")}
@@ -131,7 +131,7 @@ import kotlinx.coroutines.withContext
     Row{Checkbox(consent,{consent=it},enabled=!busy&&!capturing&&image!=null&&masks.isEmpty(),modifier=Modifier.testTag("diagnostic-consent"));Text("선택 앱의 오류 화면인지 확인했고, 비밀번호·OTP·시드 등 민감정보가 없습니다. 위 범위의 외부 AI 전송에 동의합니다.",modifier=Modifier.padding(top=8.dp))}
     Button(onClick={val bytes=image?.copyOf()?:return@Button;val app=selected?:return@Button;device=diagnosticDevice(context);val requestDevice=device;busy=true;report=null;message="오류 안내를 검토하고 있습니다";scope.launch{try{report=withContext(Dispatchers.IO){requestDiagnostic(endpoint,token,bytes,app,requestDevice)};prefs.edit().putString("endpoint",endpoint.trim()).apply();message="검토 완료 · 실제 원인을 확정한 결과는 아닙니다"}catch(e:Exception){message=e.message?:"AI 검토 실패"}finally{bytes.fill(0);busy=false}}},enabled=configured&&selected!=null&&image!=null&&consent&&masks.isEmpty()&&!busy&&!capturing,modifier=Modifier.fillMaxWidth().testTag("run-app-diagnostic")){Text(if(busy)"처리 중…" else "오류 화면 AI 검토")}
     if(message.isNotBlank())Text(message,color=Color(0xFFE5C77F),modifier=Modifier.testTag("diagnostic-message"))
-    report?.let{r->HorizontalDivider();AppDiagnosticSummary(r);Button(onClick={onSave(r)},modifier=Modifier.fillMaxWidth()){Text(if(persisted)"암호화된 계정 기록에 결과 저장" else "현재 세션에 결과 보관")}}
+    report?.let{r->HorizontalDivider();AppDiagnosticSummary(r);Button(onClick={try{onSave(r);message=if(persisted)"검토 결과를 암호화해 저장했습니다" else "현재 세션에 보관했습니다"}catch(e:Exception){message=e.message?:"결과 저장 실패"}},modifier=Modifier.fillMaxWidth()){Text(saveLabel?:if(persisted)"암호화된 계정 기록에 결과 저장" else "현재 세션에 결과 보관")}}
     Text("이미지는 기기에 저장하지 않으며 대화창을 닫으면 메모리에서 정리합니다. 결과 저장 시에는 판독 코드와 선택 앱 정보만 보관합니다. 서버는 원본을 저장하지 않지만 외부 AI 제공자의 데이터 처리 정책이 적용됩니다.",style=MaterialTheme.typography.bodySmall)
     Spacer(Modifier.height(24.dp))
    }
