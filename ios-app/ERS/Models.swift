@@ -28,6 +28,7 @@ struct ScanRecord: Identifiable, Codable {
     let signals: [RiskSignal]
     let date: Date
     var worker: String = ""
+    var kycReviews: [KycReview]? = nil
 }
 
 final class ERSStore: ObservableObject {
@@ -61,6 +62,12 @@ final class ERSStore: ObservableObject {
         return record
     }
 
+    func saveKyc(_ record:ScanRecord,review:KycReview)->ScanRecord {
+        var updated=record;updated.kycReviews=Array(([review]+(record.kycReviews ?? [])).prefix(10))
+        if let index=records.firstIndex(where:{$0.id==record.id}) { records[index]=updated }
+        return updated
+    }
+
     init() {
         let query:[String:Any] = [kSecClass as String:kSecClassGenericPassword,kSecAttrService as String:"ERS.records",kSecAttrAccount as String:"local",kSecReturnData as String:true,kSecMatchLimit as String:kSecMatchLimitOne]
         var result:CFTypeRef?
@@ -87,3 +94,4 @@ final class ERSStore: ObservableObject {
         #endif
     }
 }
+

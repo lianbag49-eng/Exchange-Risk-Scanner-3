@@ -3,10 +3,11 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "codex/ers-hyperliquid" ]
+    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-apk.yml"
+      - "kyc-service/**"
 
 jobs:
   build:
@@ -16,6 +17,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate AI review service without real uploads
+        working-directory: kyc-service
+        run: npm test
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -87,3 +95,4 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+

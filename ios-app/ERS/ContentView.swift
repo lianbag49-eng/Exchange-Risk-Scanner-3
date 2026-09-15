@@ -168,9 +168,9 @@ struct SettingsView:View {
                 LabelText("SCAN PREFERENCES")
                 CardBox {ToggleRow("보호된 저장소에 기록 보관","이 기기에 최대 200개 보관",$store.autoSave);ToggleRow("강화 분석 모드","민감한 보안 기준",$store.strictMode);ToggleRow("보안 도움말 표시","결과에 권장 조치",$store.showTips)}
                 LabelText("APP INFORMATION")
-                CardBox {InfoRow("Application","Exchange Risk Scanner");InfoRow("Version","1.8 iOS");InfoRow("Engine","ERS Device Guard");InfoRow("Data Mode","On-device only")}
+                CardBox {InfoRow("Application","Exchange Risk Scanner");InfoRow("Version","1.9 iOS");InfoRow("Engine","ERS Device Guard");InfoRow("Data Mode","기기 점검 + 선택적 AI 검토")}
                 LabelText("PRIVACY & SECURITY")
-                Notice("스캔 데이터는 기기에서만 분석되며 입력한 UID 원문을 외부 서버로 전송하지 않습니다.",green)
+                Notice("기기 스캔은 로컬에서 처리합니다. AI KYC 검토는 전송 동의 후에만 이미지와 거래소·UID·국가를 지정 서버에 전송합니다.",green)
             }.padding(.horizontal,18).padding(.bottom,16)
         }
     }
@@ -178,11 +178,24 @@ struct SettingsView:View {
 
 struct ReportView:View {
     let record:ScanRecord
+    @EnvironmentObject var store:ERSStore
     @Environment(\.dismiss) var dismiss
+    @State private var showAi=false
+    @State private var sessionRecord:ScanRecord?
+    var current:ScanRecord {sessionRecord ?? store.records.first(where:{$0.id==record.id}) ?? record}
     var body:some View {
         NavigationStack {
-            ScrollView {VStack(alignment:.leading,spacing:12){HStack{ExchangeMark(record.exchange.name);Text(record.exchange.name).font(.title2)};LabelText("스캔 결과 · 기기·입력 정보 기준");Text(record.level+" · \(record.score)/100").font(.system(size:28,weight:.black)).foregroundStyle(levelColor(record.level));CardBox{InfoRow("Exchange",record.exchange.name);InfoRow("UID",maskUid(record.uid));InfoRow("작업자",record.worker.isEmpty ? "미지정":record.worker);InfoRow("KYC Country",record.country);InfoRow("Device Country",record.deviceCountry.isEmpty ? "-":record.deviceCountry)};LabelText("ANALYSIS");CardBox{ForEach(record.signals){SignalRow($0)}}}.padding(18)}
+            ScrollView {VStack(alignment:.leading,spacing:12){
+                HStack{ExchangeMark(current.exchange.name);Text(current.exchange.name).font(.title2)}
+                LabelText("스캔 결과 · 기기·입력 정보 기준")
+                Text(current.level+" · \(current.score)/100").font(.system(size:28,weight:.black)).foregroundStyle(levelColor(current.level))
+                CardBox{InfoRow("Exchange",current.exchange.name);InfoRow("UID",maskUid(current.uid));InfoRow("작업자",current.worker.isEmpty ? "미지정":current.worker);InfoRow("KYC Country",current.country);InfoRow("Device Country",current.deviceCountry.isEmpty ? "-":current.deviceCountry)}
+                Button("AI KYC 검토 · 증빙 이미지"){showAi=true}.buttonStyle(.borderedProminent)
+                if let review=current.kycReviews?.first{CardBox{KycReviewSummary(review:review)}}
+                LabelText("ANALYSIS");CardBox{ForEach(current.signals){SignalRow($0)}}
+            }.padding(18)}
             .background(bg).toolbar{ToolbarItem(placement:.topBarTrailing){Button("완료"){dismiss()}}}
+            .sheet(isPresented:$showAi){KycReviewSheet(record:current,persisted:store.records.contains(where:{$0.id==record.id})){review in sessionRecord=store.saveKyc(current,review:review)}}
         }.preferredColorScheme(.dark)
     }
 }
@@ -211,3 +224,4 @@ struct RecordRow:View{let r:ScanRecord;let tap:()->Void;init(_ r:ScanRecord,_ ta
 func Notice(_ s:String,_ c:Color)->some View{Text(s).font(.caption).foregroundStyle(c==red ? red:muted).padding(14).frame(maxWidth:.infinity,alignment:.leading).background(c.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(c.opacity(0.25)))}
 func levelColor(_ s:String?)->Color{s=="HIGH" ? red:s=="MEDIUM" ? amber:s=="LOW" ? green:gold}
 func maskUid(_ s:String)->String{s.count<=4 ? String(repeating:"•",count:s.count):String(s.prefix(2))+String(repeating:"•",count:min(6,s.count-4))+String(s.suffix(2))}
+
