@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {fundingView,leverageRequest,boundedPrice,fundingCashflow} from '../terminal-core.js';
+import {fundingView,leverageRequest,boundedPrice,fundingCashflow,fitsPosition} from '../terminal-core.js';
 import {makeOrder} from '../order-validation.js';
 const meta={asset:0,szDecimals:4,maxLeverage:20,spot:false};
 test('hourly funding direction, rollover, unavailable and position cashflow',()=>{
@@ -13,3 +13,5 @@ test('market IOC bound stays inside requested slippage and respects price precis
  assert.equal(boundedPrice(meta,'21',true,'0.5'),'21.1');assert.equal(boundedPrice(meta,'20',false,'0.5'),'19.9');for(const slip of ['0','-1','6','NaN'])assert.throws(()=>boundedPrice(meta,'20',true,slip));
  const tiny={...meta,szDecimals:0,spot:true};assert.ok(Number(boundedPrice(tiny,'0.000012345',false,'0.5'))>=.000012345*.995);
 });
+
+test('reduce-only validation uses exact decimal quantities',()=>{assert.equal(fitsPosition('1.000000000000000001','1',false),false);assert.equal(fitsPosition('1.000000000000000001','-1.000000000000000002',true),true);assert.equal(fitsPosition('1','-2',false),false);});

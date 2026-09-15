@@ -8,7 +8,7 @@ async function fixture(page){
  if(q.type==='meta')data=meta;
  else if(q.type==='spotMeta')data={tokens:[{name:'USDC',index:0,szDecimals:2},{name:'HYPE',index:1,szDecimals:2}],universe:[{name:'@0',tokens:[1,0],index:0}]};
  else if(['metaAndAssetCtxs','spotMetaAndAssetCtxs'].includes(q.type)){if(state.unavailable)return r.fulfill({status:503,body:'Unavailable'});data=[meta,[ctx(),ctx()]]}
- else if(q.type==='candleSnapshot')data=[{t:Date.now()-60000,o:'20',h:'22',l:'19',c:'21',v:'100',s:q.req.coin,i:q.req.interval}];
+ else if(q.type==='candleSnapshot')data=Array.from({length:70},(_,i)=>{const c=20+i/80+Math.sin(i/4)/5;return {t:Date.now()-(70-i)*60000,o:String(c-.05),h:String(c+.1),l:String(c-.15),c:String(c),v:String(30+i%12),s:q.req.coin,i:q.req.interval}});
  else if(q.type==='activeAssetData')data={coin:q.coin,user:A,leverage:{type:state.margin,value:state.leverage},maxTradeSzs:['100','100'],availableToTrade:['1000','1000'],markPx:'21'};
  else if(q.type==='clearinghouseState')data={marginSummary:{accountValue:'1000'},withdrawable:'800',assetPositions:[{position:{coin:'ETH',szi:state.position,entryPx:'19',liquidationPx:'10',marginUsed:'20',unrealizedPnl:'4',leverage:{type:state.margin,value:state.leverage},cumFunding:{sinceOpen:'-0.001'}}}]};
  else if(q.type==='spotClearinghouseState')data={balances:[{coin:'USDC',total:'500',hold:'50'}]};

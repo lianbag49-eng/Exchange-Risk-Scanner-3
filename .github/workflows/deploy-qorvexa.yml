@@ -23,6 +23,8 @@ jobs:
         run: npm ci
       - name: Validate wallet transaction logic
         run: npm run test:unit
+      - name: Validate public market API
+        run: node qorvexa-dex/tests/public-market-smoke.mjs
       - name: Bundle wallet and testnet clients
         run: npm run build
       - name: Install Chromium

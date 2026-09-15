@@ -70,7 +70,7 @@ async function selectMarket(){
  }catch(e){if(token===generation)status('Market request failed · Refresh to retry')}finally{clearTimeout(timeout)}
 }
 async function loadSymbols(){
- ++generation;cleanup();marketMeta=[];book=null;streamReceived=0;trades=[];lastTradeTime=0;$('marketPrice').textContent='—';$('marketSymbol').replaceChildren();emit();paintBook();candles=[];draw();status('Loading markets');
+ ++generation;cleanup();marketMeta=[];book=null;assetContext=null;contextReceived=0;paintContext();streamReceived=0;trades=[];lastTradeTime=0;$('marketPrice').textContent='—';$('marketSymbol').replaceChildren();emit();paintBook();candles=[];draw();status('Loading markets');
  const mode=$('marketType').value,token=generation;const abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),15000);
  try{const meta=await info({type:mode==='spot'?'spotMeta':'meta'},abort.signal);if(token!==generation)return;
  const rows=mode==='spot'?meta.universe.map(p=>({value:p.name,label:p.tokens.map(i=>meta.tokens.find(t=>t.index===i)?.name||'?').join('/'),asset:10000+p.index,szDecimals:meta.tokens.find(t=>t.index===p.tokens[0])?.szDecimals,spot:true})):meta.universe.map((x,i)=>({value:x.name,label:x.name+' / USDC PERP',asset:i,szDecimals:x.szDecimals,spot:false,maxLeverage:x.maxLeverage,onlyIsolated:x.onlyIsolated,delisted:x.isDelisted})).filter(x=>!x.delisted);

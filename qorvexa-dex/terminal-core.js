@@ -25,3 +25,8 @@ export function boundedPrice(meta,reference,isBuy,slippage){
  let s=units.toString().padStart(decimals+1,'0');if(decimals)s=s.slice(0,-decimals)+'.'+s.slice(-decimals);return s.includes('.')?s.replace(/0+$/,'').replace(/\.$/,''):s;
 }
 export function fundingCashflow(position,oracle,rate){if(![position,oracle,rate].every(finite))return null;return -Number(position)*Number(oracle)*Number(rate);}
+export function fitsPosition(size,position,buy){
+ if(typeof position!=='string'||!/^[-]?(0|[1-9]\d*)(\.\d+)?$/.test(position))return false;
+ const negative=position.startsWith('-');const [p,pd]=decimal(negative?position.slice(1):position),[s,sd]=decimal(size);
+ return p>0n&&s>0n&&buy===negative&&s*10n**BigInt(pd)<=p*10n**BigInt(sd);
+}
