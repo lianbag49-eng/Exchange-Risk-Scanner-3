@@ -34,7 +34,7 @@ class PreventionTest{
   var cases by mutableStateOf(initial);var draft by mutableStateOf<PreventionCase?>(null)
   try{
    ui.setContent{
-    MaterialTheme(colorScheme=darkColorScheme(primary=Color(0xFFD9B56D),onPrimary=Color(0xFF070A09),background=Color(0xFF070A09),surface=Color(0xFF101815)))){Surface{
+    MaterialTheme(colorScheme=darkColorScheme(primary=Color(0xFFD9B56D),onPrimary=Color(0xFF070A09),background=Color(0xFF070A09),surface=Color(0xFF101815))){Surface{
      val installed=rememberInstalledExchanges(LocalContext.current,Unit,appReader={calls.incrementAndGet();listOf(app)},directoryReader={directory})
      PreventionHome(installed,cases,false,"",onRecord={e,a->draft=PreventionCase(app=a,exchangeName=e.name,exchangeInfoUrl=e.infoUrl)},onInspect={_,_->},onCase={draft=it},onDiscovery={},onAccounts={},onReset={})
      draft?.let{d->val current=cases.find{it.id==d.id}?:d
