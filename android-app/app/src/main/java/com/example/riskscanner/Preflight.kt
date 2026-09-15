@@ -56,7 +56,7 @@ internal fun summarizePreflightAccounts(accounts:List<LinkedExchangeAccount>,can
  val current=relevant.filter{it.error.isEmpty()&&it.status!=null&&!apiKycNeedsRefresh(it.status,now)}
  val follow=current.count{a->val status=a.status!!;status.state=="not_passed_reported"||(status.state=="level_reported"&&status.level=="LEVEL_DEFAULT")}
  val unknown=current.size<relevant.size||current.any{it.status!!.state=="unknown"}
- return PreflightAccountSummary("이 거래소에 연결된 계정 ${relevant.size}개 · 최신 응답 ${current.size}개 · KYC 추가 확인 $follow개"+(if(unknown)" · 미확인 항목 있음" else "")+"\n현재 앱 로그인과 동일한 계정인지는 미확인",follow>0,unknown)
+ return PreflightAccountSummary("이 거래소에 연결된 계정 ${relevant.size}개 · 최신 응답 ${current.size}개 · KYC 추가 확인 ${follow}개"+(if(unknown)" · 미확인 항목 있음" else "")+"\n현재 앱 로그인과 동일한 계정인지는 미확인",follow>0,unknown)
 }
 @Suppress("DEPRECATION")
 internal fun collectPreflight(context:Context,candidate:ExchangeAppCandidate,cases:List<PreventionCase>,accounts:List<LinkedExchangeAccount>,accountReadError:Boolean=false):PreflightReport{
