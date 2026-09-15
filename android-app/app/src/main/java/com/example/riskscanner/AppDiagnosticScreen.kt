@@ -37,6 +37,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,7 +58,7 @@ import kotlinx.coroutines.withContext
 @Composable fun AppDiagnosticDialog(record:Record,persisted:Boolean,onSave:(AppDiagnosticReport)->Unit,close:()->Unit){
  val context=LocalContext.current;val scope=rememberCoroutineScope();val owner=remember{UUID.randomUUID().toString()}
  val prefs=remember{context.getSharedPreferences("ers_ai_review",0)}
- var endpoint by remember{mutableStateOf(prefs.getString("endpoint","")?:"")};var token by remember{mutableStateOf("")}
+ var endpoint by remember{mutableStateOf(reviewServerAddress(prefs.getString("endpoint",null)))};var token by remember{mutableStateOf("")}
  var appsLoading by remember{mutableStateOf(true)};var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var query by remember{mutableStateOf("")};var selected by remember{mutableStateOf<DiagnosticApp?>(null)}
  var choose by remember{mutableStateOf(true)};var image by remember{mutableStateOf<ByteArray?>(null)};val masks=remember{mutableStateListOf<MaskRect>()}
  var consent by remember{mutableStateOf(false)};var busy by remember{mutableStateOf(false)};var message by remember{mutableStateOf("")};var connection by remember{mutableStateOf("")};var report by remember{mutableStateOf<AppDiagnosticReport?>(null)}
@@ -124,6 +125,8 @@ import kotlinx.coroutines.withContext
     OutlinedTextField(token,{token=it;connection=""},label={Text("서버 접속 토큰 · 현재 세션만")},singleLine=true,enabled=!busy,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth().testTag("diagnostic-token"))
     Text("OpenAI API 키는 서버에만 설정합니다. 아래 동의 후 가린 이미지, 선택 앱의 이름·패키지·버전·활성 상태와 요청 시점의 Android·네트워크·VPN·프록시·자동 시간 상태를 이 서버로 전송합니다. 서버는 이미지 한 장을 OpenAI로 전달합니다. 설치 앱 전체 목록과 계정 UID는 전송하지 않습니다.",style=MaterialTheme.typography.bodySmall)
     OutlinedButton(onClick={busy=true;scope.launch{try{connection=withContext(Dispatchers.IO){diagnosticConnection(endpoint,token)};prefs.edit().putString("endpoint",endpoint.trim()).apply()}catch(e:Exception){connection=e.message?:"연결 실패"}finally{busy=false}}},enabled=configured&&!busy&&!capturing,modifier=Modifier.testTag("diagnostic-check-connection")){Text("AI 서버 연결 확인")}
+    Text("가상 오류 이미지 한 장으로 실제 AI 분석까지 테스트할 수 있습니다. API 사용량이 발생하며 테스트 결과는 계정 기록에 저장하지 않습니다.",style=MaterialTheme.typography.bodySmall)
+    OutlinedButton(onClick={busy=true;connection="테스트 준비 중…";scope.launch{try{val result=withContext(Dispatchers.IO){aiConnectionSelfTest(endpoint,token,onProgress={stage->scope.launch{connection=stage}})};connection=result;prefs.edit().putString("endpoint",endpoint.trim()).apply()}catch(e:CancellationException){throw e}catch(e:Exception){connection=e.message?:"AI 테스트 실패"}finally{busy=false}}},enabled=configured&&!busy&&!capturing,modifier=Modifier.testTag("diagnostic-test-ai")){Text("연결 + 가상 이미지 분석 테스트")}
     if(connection.isNotBlank())Text(connection,color=Color(0xFFE5C77F))
     Row{Checkbox(consent,{consent=it},enabled=!busy&&!capturing&&image!=null&&masks.isEmpty(),modifier=Modifier.testTag("diagnostic-consent"));Text("선택 앱의 오류 화면인지 확인했고, 비밀번호·OTP·시드 등 민감정보가 없습니다. 위 범위의 외부 AI 전송에 동의합니다.",modifier=Modifier.padding(top=8.dp))}
     Button(onClick={val bytes=image?.copyOf()?:return@Button;val app=selected?:return@Button;device=diagnosticDevice(context);val requestDevice=device;busy=true;report=null;message="오류 안내를 검토하고 있습니다";scope.launch{try{report=withContext(Dispatchers.IO){requestDiagnostic(endpoint,token,bytes,app,requestDevice)};prefs.edit().putString("endpoint",endpoint.trim()).apply();message="검토 완료 · 실제 원인을 확정한 결과는 아닙니다"}catch(e:Exception){message=e.message?:"AI 검토 실패"}finally{bytes.fill(0);busy=false}}},enabled=configured&&selected!=null&&image!=null&&consent&&masks.isEmpty()&&!busy&&!capturing,modifier=Modifier.fillMaxWidth().testTag("run-app-diagnostic")){Text(if(busy)"처리 중…" else "오류 화면 AI 검토")}

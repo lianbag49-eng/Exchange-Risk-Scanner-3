@@ -35,7 +35,8 @@ class ERSUiTest {
   ui.onNodeWithText("스캔 결과").assertExists();screenshot("result")
   ui.onNodeWithTag("open-kyc-review").performScrollTo().performClick()
   ui.onNodeWithText("AI KYC 검토").assertExists()
-  ui.onNodeWithTag("kyc-endpoint").assertExists()
+  ui.onNodeWithTag("kyc-endpoint").assertTextContains(DEFAULT_AI_SERVER)
+  ui.onNodeWithTag("kyc-test-ai").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("kyc-run").performScrollTo().assertIsNotEnabled()
   screenshot("ai-kyc")
   ui.onNodeWithText("닫기",useUnmergedTree=true).performClick()
@@ -45,6 +46,9 @@ class ERSUiTest {
   ui.onNodeWithTag("diagnostic-capture").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("diagnostic-check-connection").performScrollTo().assertIsNotEnabled()
+  ui.onNodeWithTag("diagnostic-endpoint").performScrollTo().assertTextContains(DEFAULT_AI_SERVER)
+  ui.onNodeWithTag("diagnostic-test-ai").performScrollTo().assertIsNotEnabled()
+  screenshot("ai-connection")
   screenshot("app-diagnostic")
   // Exercise Android's real consent UI against the emulator's Settings app only.
   // No exchange credentials, real user screenshots or external AI requests are involved.
@@ -97,6 +101,26 @@ class ERSUiTest {
   assertTrue(runCatching{AppDiagnosticReport.parse(diagnostic.json().put("screenNotice","confirmed_ban"))}.isFailure)
   val falseClaim=review.json().put("officialVerified",true)
   assertTrue(runCatching{KycReview.parse(falseClaim)}.isFailure)
+ }
+ @Test fun aiConnectionTestUsesOnlyFixtureAndRejectsFailedInference(){
+  assertEquals(DEFAULT_AI_SERVER,reviewServerAddress(null))
+  assertEquals(DEFAULT_AI_SERVER,reviewServerAddress("  "))
+  assertEquals("https://custom.example/review",reviewServerAddress(" https://custom.example/review "))
+  val stages=mutableListOf<String>();var checked=false;var sampleBytes:ByteArray?=null
+  val fixtureApp=DiagnosticApp("org.example.ers.connectiontest","ERS Example Exchange","test-fixture",true)
+  val sampleReport=AppDiagnosticReport("11111111-2222-3333-4444-555555555555","b".repeat(64),"2026-09-15T00:00:00Z","mock-only",fixtureApp,"review_available","network_error",emptyList(),listOf("network_error"),listOf("check_network","confirm_with_exchange"))
+  val result=aiConnectionSelfTest("https://test.invalid","x".repeat(32),check={base,token->assertEquals("https://test.invalid",base);assertEquals(32,token.length);checked=true;"mock authentication"},diagnose={base,token,image,app,device->
+   assertTrue(checked);assertEquals("https://test.invalid",base);assertEquals(32,token.length)
+   assertEquals(fixtureApp,app);assertEquals(35,device.getInt("sdk"));assertFalse(device.getBoolean("vpn"));assertFalse(device.getBoolean("proxy"));assertTrue(device.getBoolean("autoTime"));assertTrue(device.getBoolean("networkValidated"));assertEquals("WIFI",device.getString("networkType"));assertEquals(6,device.length())
+   val bitmap=BitmapFactory.decodeByteArray(image,0,image.size);assertNotNull(bitmap);assertEquals(960,bitmap.width);assertEquals(640,bitmap.height);assertFalse(likelyBlankCapture(bitmap));bitmap.recycle();sampleBytes=image
+   sampleReport
+  },onProgress={stages.add(it)})
+  assertTrue(result.contains("가상 이미지 분석 완료"));assertEquals(2,stages.size);assertTrue(sampleBytes!!.all{it==0.toByte()})
+  var invoked=false
+  assertTrue(runCatching{aiConnectionSelfTest("https://test.invalid","x".repeat(32),check={_,_->error("rejected token")},diagnose={_,_,_,_,_->invoked=true;sampleReport})}.isFailure)
+  assertFalse(invoked)
+  assertTrue(runCatching{aiConnectionSelfTest("https://test.invalid","x".repeat(32),check={_,_->"ok"},diagnose={_,_,_,_,_->sampleReport.copy(screenNotice="unknown",status="needs_more_evidence")})}.isFailure)
+  assertTrue(runCatching{aiConnectionSelfTest("https://test.invalid","x".repeat(32),check={_,_->"ok"},diagnose={_,_,_,_,_->error("provider unavailable")})}.isFailure)
  }
  @Test fun masksAreFlattenedIntoPixelsAndCaptureDoesNotAcceptForgedConsent(){
   val source=Bitmap.createBitmap(100,100,Bitmap.Config.ARGB_8888).apply{eraseColor(android.graphics.Color.WHITE)}
