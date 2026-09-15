@@ -21,9 +21,17 @@ class ERSUiTest {
   shell("screencap -p /sdcard/Download/ers-ui/$name.png")
  }
  @Test fun offlineLogosAndAccountJourney(){
-  val catalog=ExchangeCatalog.load(ui.activity);assertEquals(53,catalog.size);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
+  val catalog=ExchangeCatalog.load(ui.activity);assertTrue(catalog.size>=2449);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
   screenshot("home")
+  ui.onNodeWithTag("open-exchange-discovery").performClick()
+  ui.onNodeWithTag("discovery-catalog-count").assertTextContains("CMC 목록")
+  ui.onNodeWithTag("discovery-no-identity-claim").assertExists()
+  screenshot("exchange-discovery")
+  ui.onNodeWithText("CMC 전체 목록").performClick()
+  ui.onNodeWithTag("cmc-search").performTextInput("Tapbit")
+  ui.onNodeWithText("Tapbit").assertExists()
+  ui.onNodeWithTag("close-discovery").performClick()
   ui.onNodeWithTag("open-account-audit").performClick()
   ui.onNodeWithTag("audit-all").assertIsNotEnabled()
   ui.onNodeWithTag("no-connected-accounts").performScrollTo().assertExists()
@@ -33,6 +41,7 @@ class ERSUiTest {
   ui.onNodeWithTag("connect-api-account").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("close-account-audit").performScrollTo().performClick()
   ui.onNodeWithTag("nav-1").performClick()
+  ui.onNodeWithText("작업자 (선택)").assertDoesNotExist()
   ui.onNodeWithContentDescription("Binance 로고").assertExists()
   screenshot("account")
   ui.onNodeWithText("선택 ›").performClick();screenshot("exchanges")

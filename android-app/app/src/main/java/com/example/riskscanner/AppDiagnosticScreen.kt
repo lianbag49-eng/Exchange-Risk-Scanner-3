@@ -55,12 +55,12 @@ import kotlinx.coroutines.withContext
  Text("실제 원인·공식 계정 상태 미확정. 선택한 앱과 이미지 출처의 동일성은 사용자 확인이 필요합니다.\n${report.reviewedAt} · ${report.model}",style=MaterialTheme.typography.bodySmall)
 }
 
-@Composable fun AppDiagnosticDialog(record:Record,persisted:Boolean,onSave:(AppDiagnosticReport)->Unit,close:()->Unit){
+@Composable fun AppDiagnosticDialog(record:Record,persisted:Boolean,onSave:(AppDiagnosticReport)->Unit,initialApp:DiagnosticApp?=null,close:()->Unit){
  val context=LocalContext.current;val scope=rememberCoroutineScope();val owner=remember{UUID.randomUUID().toString()}
  val prefs=remember{context.getSharedPreferences("ers_ai_review",0)}
  var endpoint by remember{mutableStateOf(reviewServerAddress(prefs.getString("endpoint",null)))};var token by remember{mutableStateOf("")}
- var appsLoading by remember{mutableStateOf(true)};var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var query by remember{mutableStateOf("")};var selected by remember{mutableStateOf<DiagnosticApp?>(null)}
- var choose by remember{mutableStateOf(true)};var image by remember{mutableStateOf<ByteArray?>(null)};val masks=remember{mutableStateListOf<MaskRect>()}
+ var appsLoading by remember{mutableStateOf(true)};var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var query by remember{mutableStateOf("")};var selected by remember{mutableStateOf(initialApp)}
+ var choose by remember{mutableStateOf(initialApp==null)};var image by remember{mutableStateOf<ByteArray?>(null)};val masks=remember{mutableStateListOf<MaskRect>()}
  var consent by remember{mutableStateOf(false)};var busy by remember{mutableStateOf(false)};var message by remember{mutableStateOf("")};var connection by remember{mutableStateOf("")};var report by remember{mutableStateOf<AppDiagnosticReport?>(null)}
  var device by remember{mutableStateOf(diagnosticDevice(context))};val capture by DiagnosticCaptureBus.state.collectAsState();val capturing=capture.owner==owner&&capture.active
  val currentImage by rememberUpdatedState(image)
@@ -86,7 +86,7 @@ import kotlinx.coroutines.withContext
   Surface(modifier=Modifier.fillMaxSize(),color=Color(0xFF101115),contentColor=Color.White){
    Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding().padding(20.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("거래소 앱 AI 진단",style=MaterialTheme.typography.titleLarge);TextButton(onClick=close,modifier=Modifier.testTag("close-app-diagnostic")){Text("닫기")}}
-    Text("${record.name} 계정 · 오류 화면과 기기 상태 검토",color=Color(0xFFE5C77F))
+    Text("${record.name} ${if(record.uid.isEmpty())"설치 후보 · 계정 미확인" else "계정"} · 오류 화면과 기기 상태 검토",color=Color(0xFFE5C77F))
     Text("앱의 비공개 데이터·서버 로그에는 접근하지 않습니다. 인증 입력 화면, OTP, 비밀번호, 시드·개인키는 제외하세요. 계정 제한의 실제 사유는 거래소 확인이 필요합니다.",style=MaterialTheme.typography.bodySmall)
     Text("1. 휴대폰에 설치된 거래소 앱 선택",style=MaterialTheme.typography.titleMedium)
     if(choose){
