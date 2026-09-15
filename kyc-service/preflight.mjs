@@ -1,10 +1,10 @@
 import {createHash} from 'node:crypto';
 import {ReviewError} from './review.mjs';
 
-export const SIGNALS=['app_debuggable','no_screen_lock','adb_enabled','security_patch_old','auto_time_off','app_disabled','network_unvalidated','no_network','kyc_followup','vpn_present','proxy_present','user_reported_open_incident'];
+export const SIGNALS=['app_debuggable','no_screen_lock','adb_enabled','security_patch_old','auto_time_off','app_disabled','network_unvalidated','no_network','kyc_followup','vpn_present','proxy_present','user_reported_open_incident','reported_restriction'];
 export const UNKNOWNS=['app_metadata_missing','device_observation_missing','security_patch_unknown','official_app_unverified','account_identity_unknown','exchange_risk_unknown','api_status_unknown','latest_version_unknown'];
 export const CHECKS=['verify_app_source','check_security_settings','check_network','check_clock','install_updates','official_kyc_page','official_support','collect_notice'];
-const MEDIUM=new Set(['no_screen_lock','adb_enabled','security_patch_old','auto_time_off','app_disabled','network_unvalidated','no_network','kyc_followup','user_reported_open_incident']);
+const MEDIUM=new Set(['no_screen_lock','adb_enabled','security_patch_old','auto_time_off','app_disabled','network_unvalidated','no_network','kyc_followup','user_reported_open_incident','reported_restriction']);
 const exact=(o,keys)=>o&&typeof o==='object'&&!Array.isArray(o)&&Object.keys(o).sort().join(',')===[...keys].sort().join(',');
 function codes(value,allowed){if(!Array.isArray(value)||value.length>20||new Set(value).size!==value.length||value.some(c=>!allowed.includes(c)))throw new ReviewError('invalid_preflight');return value;}
 export function preflightLevel(item){return item.signals.includes('app_debuggable')?'HIGH':item.signals.some(s=>MEDIUM.has(s))?'MEDIUM':item.unknowns.some(u=>['app_metadata_missing','device_observation_missing'].includes(u))?'UNKNOWN':'LOW';}

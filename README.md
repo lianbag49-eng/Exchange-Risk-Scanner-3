@@ -2,6 +2,18 @@
 
 Android exchange incident investigation and recurrence-prevention app. APK is built with GitHub Actions. iOS source is in `ios-app/`.
 
+## Android 1.16 · 공식 제한 조회와 신원확인 업체 결과
+
+홈의 **공식 사유 · 신원 검증 결과**에서 거래소 API와 신원확인 업체 결과를 확인합니다. 기존 캡처 AI는 계속 별도 근거입니다.
+
+- **Binance Global HMAC 읽기 API:** 키 권한을 먼저 검사하고 거래·출금·이체 권한이 있거나 필수 권한 필드가 누락되면 연결을 거부합니다. `/api/v3/account`의 UID와 허용 여부, `/sapi/v1/account/status`의 상태 문구, `/sapi/v1/account/apiTradingStatus`의 잠금·복구 예정·조건 값을 조회합니다. UID 불일치는 적용하지 않으며 상태 조회 일부 실패는 미확인으로 표시합니다. 조회 경로 외 주문·출금 요청은 허용하지 않습니다. 응답의 잔액은 저장하거나 AI에 보내지 않습니다.
+- **보고 범위:** API 거래 잠금과 계정 권한은 거래소 보고 사실입니다. 조건 값은 실제 발동 원인이나 내부 KYC 거절 사유를 입증하지 않습니다. Binance KYC 진위는 이 API에서 미제공입니다. Bybit의 10024·10009·10010은 공식 문서의 컴플라이언스·지역 이용 제한·키 IP 불일치 안내로 구분하고 상세 비공개 사유를 추측하지 않습니다.
+- **Sumsub:** 서버 운영자에게 권한이 있는 기존 검증의 상태·검토 ID/시각·단계·거절/재제출 사유와 신청자 공개용 안내를 HMAC 서명된 API에서 조회합니다. 서버에 등록된 접속자별 대상만 조회하며 앱이 임의의 applicant ID·UID를 지정할 수 없습니다. `clientComment`, 신분증 사진, 이름, 문서 번호, 생체정보는 조회 결과에 포함하지 않습니다. 검증 업체 키와 대상 목록을 서버에 설정하기 전에는 **미연결**입니다. 계약·키 발급·새 신원 검증 수행은 이 업데이트에 포함되지 않으며 자동 가입·유료 주문하지 않습니다.
+- **진위 해석:** 완료된 검증의 GREEN/RED와 RETRY를 승인/거절/재제출로 표시합니다. 심사 중인 이전 결과를 승인으로 올리지 않습니다. FORGERY/GRAPHIC_EDITOR가 있으면 **업체가 보고한 위변조/편집 사유**로 표시합니다. 승인만으로 문서 진위를 단독 확정하거나 해당 거래소 계정의 본인·KYC와 같다고 결론 내리지 않습니다. 독립 검증 결과를 거래소 비공개 데이터처럼 표시하지 않습니다.
+- **사전 점검:** Binance의 현재 제한·비허용 보고를 주의 신호에 포함합니다. 새 제한 코드의 AI 전송에는 전송 범위를 다시 확인하고 켜야 합니다. 1.15의 암호화된 토큰은 유지하지만 동의 전 자동 AI 전송은 꺼집니다. 로컬 점검은 계속 동작합니다. 신원확인 업체 조회는 별도 동의 후 수동 요청하며 AI에 전송하지 않고 화면 세션에서만 표시합니다.
+
+설정 방법: [서버 신원 검증 연결](kyc-service/README.md). 공식 문서: [Binance 계정](https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/account), [Binance UID·권한](https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/account), [Bybit 오류 코드](https://bybit-exchange.github.io/docs/v5/error), [Sumsub 검증 결과](https://docs.sumsub.com/reference/get-applicant-review-status), [Sumsub 인증](https://docs.sumsub.com/reference/authentication).
+
 ## Android 1.15 · 거래소 로고와 사진 없는 자동 사전 점검
 
 홈의 설치 거래소 카드, CMC 목록, 사건 목록·상세에 거래소 로고를 연결했습니다. 기존 52개 내장 로고는 오프라인에서도 표시하고, 나머지는 CMC ID에 해당하는 고정 CDN의 PNG를 필요한 화면에서 불러옵니다. 최대 크기·픽셀 수를 검사하고 로컬 캐시를 사용하며, 로고가 없거나 다운로드에 실패하면 이름 약자를 표시합니다. 이 로고는 **CMC 제공 브랜드 이미지**이며 설치 앱의 공식 배포자나 서명을 인증하지 않습니다. [CMC 로고 출처 예시](https://coinmarketcap.com/exchanges/binance/).

@@ -24,6 +24,7 @@ val preflightSignals=linkedMapOf(
  "app_disabled" to "앱이 비활성 상태",
  "network_unvalidated" to "인터넷 연결 검증 실패",
  "no_network" to "활성 네트워크 없음",
+ "reported_restriction" to "연결 계정의 API가 제한·비허용 상태를 보고함 · 상세 사유 미확인",
  "kyc_followup" to "연결된 계정 중 API가 KYC 미완료를 보고함",
  "vpn_present" to "VPN 사용 감지 · 이것만으로 위험 판정하지 않음",
  "proxy_present" to "프록시 설정 감지 · 이것만으로 위험 판정하지 않음",
@@ -31,7 +32,7 @@ val preflightSignals=linkedMapOf(
 )
 val preflightUnknowns=linkedMapOf("app_metadata_missing" to "앱 설정 정보", "device_observation_missing" to "기기 상태 일부", "security_patch_unknown" to "보안 패치 날짜", "official_app_unverified" to "공식 앱 배포자·서명", "account_identity_unknown" to "현재 앱에 로그인된 계정", "exchange_risk_unknown" to "거래소 내부 리스크·제한 사유", "api_status_unknown" to "현재 공식 계정 상태", "latest_version_unknown" to "스토어 최신 앱 버전")
 val preflightChecks=linkedMapOf("verify_app_source" to "공식 사이트가 안내하는 앱 배포 경로 확인", "check_security_settings" to "기기 잠금·디버깅 등 보안 설정 확인", "check_network" to "네트워크 연결 상태 확인", "check_clock" to "자동 날짜·시간 설정 확인", "install_updates" to "공식 OS·앱 업데이트 확인", "official_kyc_page" to "공식 계정 KYC 상태·추가 요청 확인", "official_support" to "거래소 고객지원에서 실제 사유 확인", "collect_notice" to "오류가 발생하면 안내 문구·화면 근거 추가")
-private val preflightMedium=setOf("no_screen_lock","adb_enabled","security_patch_old","auto_time_off","app_disabled","network_unvalidated","no_network","kyc_followup","user_reported_open_incident")
+private val preflightMedium=setOf("no_screen_lock","adb_enabled","security_patch_old","auto_time_off","app_disabled","network_unvalidated","no_network","kyc_followup","user_reported_open_incident","reported_restriction")
 fun preflightLevel(signals:List<String>,unknowns:List<String>)=when{
  "app_debuggable" in signals->"HIGH"
  signals.any{it in preflightMedium}->"MEDIUM"
@@ -47,7 +48,7 @@ data class PreflightReport(val app:DiagnosticApp,val checkedAt:Long,val signals:
  fun fingerprint()="$id:${signals.sorted().joinToString(",")}:${unknowns.sorted().joinToString(",")}"
 }
 internal fun preflightDigest(items:List<PreflightReport>)=preflightHash(items.joinToString("|"){it.fingerprint()})
-data class PreflightAccountSummary(val text:String,val needsFollowup:Boolean,val unknown:Boolean)
+data class PreflightAccountSummary(val text:String,val needsFollowup:Boolean,val unknown:Boolean,val restrictionFollowup:Boolean=false)
 internal fun summarizePreflightAccounts(accounts:List<LinkedExchangeAccount>,candidate:ExchangeAppCandidate,now:Long,error:Boolean=false):PreflightAccountSummary{
  if(error)return PreflightAccountSummary("계정 연결 기록을 읽지 못함 · 현재 상태 미확인",false,true)
  val names=candidate.exchanges.map{it.name.lowercase(java.util.Locale.ROOT)}.toSet()
@@ -55,8 +56,9 @@ internal fun summarizePreflightAccounts(accounts:List<LinkedExchangeAccount>,can
  if(relevant.isEmpty())return PreflightAccountSummary("공식 계정 미연결 · 현재 KYC 미확인",false,true)
  val current=relevant.filter{it.error.isEmpty()&&it.status!=null&&!apiKycNeedsRefresh(it.status,now)}
  val follow=current.count{a->val status=a.status!!;status.state=="not_passed_reported"||(status.state=="level_reported"&&status.level=="LEVEL_DEFAULT")}
+ val restricted=current.count{it.status!!.restrictions?.requiresFollowup==true}
  val unknown=current.size<relevant.size||current.any{it.status!!.state=="unknown"}
- return PreflightAccountSummary("이 거래소에 연결된 계정 ${relevant.size}개 · 최신 응답 ${current.size}개 · KYC 추가 확인 ${follow}개"+(if(unknown)" · 미확인 항목 있음" else "")+"\n현재 앱 로그인과 동일한 계정인지는 미확인",follow>0,unknown)
+ return PreflightAccountSummary("이 거래소에 연결된 계정 ${relevant.size}개 · 최신 응답 ${current.size}개 · KYC 추가 확인 ${follow}개 · 제한·권한 확인 ${restricted}개"+(if(unknown)" · 미확인 항목 있음" else "")+"\n현재 앱 로그인과 동일한 계정인지는 미확인",follow>0,unknown,restricted>0)
 }
 @Suppress("DEPRECATION")
 internal fun collectPreflight(context:Context,candidate:ExchangeAppCandidate,cases:List<PreventionCase>,accounts:List<LinkedExchangeAccount>,accountReadError:Boolean=false):PreflightReport{
@@ -79,6 +81,7 @@ internal fun collectPreflight(context:Context,candidate:ExchangeAppCandidate,cas
  if(patchAge==null)unknown.add("security_patch_unknown") else if(patchAge>=365)signals.add("security_patch_old")
  val installer=runCatching{if(Build.VERSION.SDK_INT>=30)context.packageManager.getInstallSourceInfo(app.packageName).installingPackageName else context.packageManager.getInstallerPackageName(app.packageName)}.getOrNull()?.take(160)?:"미확인"
  val summary=summarizePreflightAccounts(accounts,candidate,now,accountReadError)
+ if(summary.restrictionFollowup)signals.add("reported_restriction")
  if(summary.needsFollowup)signals.add("kyc_followup");if(summary.unknown)unknown.add("api_status_unknown")
  if(cases.any{it.app.packageName==app.packageName&&it.outcome!="resolved"})signals.add("user_reported_open_incident")
  return PreflightReport(app,now,signals.distinct(),unknown.distinct(),installer,summary.text)

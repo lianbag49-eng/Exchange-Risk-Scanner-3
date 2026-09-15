@@ -89,6 +89,7 @@ class MainActivity:ComponentActivity(){
   var discoveryApp by remember{mutableStateOf<DiagnosticApp?>(null)}
   var discoveryRecord by remember{mutableStateOf<Record?>(null)}
   var preflightSettings by remember{mutableStateOf(false)}
+  var officialVerification by remember{mutableStateOf(false)}
   var preflightConfigRevision by remember{mutableIntStateOf(0)}
   var discoveryCaseId by remember{mutableStateOf<String?>(null)}
   val installed=rememberInstalledExchanges(this,exchanges)
@@ -98,7 +99,7 @@ class MainActivity:ComponentActivity(){
   var preventionError by remember{mutableStateOf("")}
   var preventionDraft by remember{mutableStateOf<PreventionCase?>(null)}
   LaunchedEffect(Unit){try{preventionCases=withContext(Dispatchers.IO){preventionStorage.load()}}catch(e:Exception){preventionError="원인 기록 복구 실패 · 기존 기록 보존을 위해 저장이 잠겨 있습니다"}finally{preventionLoading=false}}
-  val preflight=rememberPreflight(this,installed,preventionCases,accountAudit||discovery||discoveryRecord!=null||detail!=null||preventionDraft!=null||preflightSettings,preflightConfigRevision)
+  val preflight=rememberPreflight(this,installed,preventionCases,accountAudit||discovery||discoveryRecord!=null||detail!=null||preventionDraft!=null||preflightSettings||officialVerification,preflightConfigRevision)
   fun saveCase(case:PreventionCase){
    check(!preventionLoading&&preventionError.isEmpty())
    val next=if(preventionCases.any{it.id==case.id})preventionCases.map{if(it.id==case.id)case else it} else listOf(case)+preventionCases
@@ -127,7 +128,7 @@ class MainActivity:ComponentActivity(){
      0->PreventionHome(installed,preventionCases,preventionLoading,preventionError,
       onRecord={exchange,app->preventionDraft=PreventionCase(app=app,exchangeName=exchange.name,exchangeInfoUrl=exchange.infoUrl)},
       onInspect={exchange,app->inspect(fromCmc(exchange),app)},onCase={preventionDraft=it},onDiscovery={discovery=true},onAccounts={tab=2},
-      onReset={try{preventionStorage.reset();preventionCases=emptyList();preventionError=""}catch(_:Exception){preventionError="원인 기록 삭제 실패"}},exchanges=exchanges,preflight=preflight,onAiSettings={preflightSettings=true})
+      onReset={try{preventionStorage.reset();preventionCases=emptyList();preventionError=""}catch(_:Exception){preventionError="원인 기록 삭제 실패"}},exchanges=exchanges,preflight=preflight,onAiSettings={preflightSettings=true},onOfficialVerification={officialVerification=true})
      1->Scan(ex,custom,uid,country,strict,{ex=it},{custom=it},{uid=it},{country=it}){r->latest=r;if(save){records.add(0,r);if(records.size>200)records.removeAt(records.lastIndex);persist(records)};detail=r}
      2->History(records,{detail=it},{records.clear();persist(records)})
      else->Settings(save,strict,tips,privacy,{save=it;prefs.edit().putBoolean("save",it).apply()},{strict=it;prefs.edit().putBoolean("strict",it).apply()},{tips=it;prefs.edit().putBoolean("tips",it).apply()},{privacy=it;prefs.edit().putBoolean("privacy",it).apply()})
@@ -136,6 +137,7 @@ class MainActivity:ComponentActivity(){
    Nav(tab){tab=it}
   }
   if(preflightSettings)AutoPreflightDialog(changed={preflightConfigRevision++},close={preflightSettings=false})
+  if(officialVerification)OfficialVerificationDialog(onAccounts={officialVerification=false;accountAudit=true},close={officialVerification=false})
   if(accountAudit)ExchangeAccountDialog(exchanges,records,onEvidence={accountAudit=false;detail=it},onDiscovery={accountAudit=false;discovery=true},close={accountAudit=false})
   if(discovery)ExchangeDiscoveryDialog(exchanges,onCatalogChanged={exchanges=ExchangeCatalog.load(this)},onInspect={exchange,app->inspect(exchange,app)},onRegister={selected->discovery=false;ex=selected;uid="";custom="";tab=1},close={discovery=false})
   preventionDraft?.let{draft->
@@ -243,7 +245,7 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.15");Info("Engine","ERS 원인 조사 · 재발 예방");Info("Data Mode","자동 사전 점검 + 거래소 로고 + 사진 없는 AI + 사건 이력");Info("Exchange catalog","${exchanges.size-1} · CMC ID directory")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.16");Info("Engine","ERS 원인 조사 · 재발 예방");Info("Data Mode","자동 점검 + 공식 제한 조회 + 신원 검증 결과 + 사건 이력");Info("Exchange catalog","${exchanges.size-1} · CMC ID directory")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
    Note("기기 스캔은 로컬에서 처리합니다. 동의한 AI KYC 검토는 이미지·거래소·UID·국가를, 앱 AI 진단은 가린 이미지·선택 앱·기기 상태를 지정 서버로 전송합니다. 서버는 이미지를 외부 AI로 전달합니다.",Green)

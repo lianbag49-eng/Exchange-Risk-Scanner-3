@@ -55,7 +55,7 @@ class InstalledExchangeState{
 
 fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern("MM.dd HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(value))}.getOrDefault(value)
 
-@Composable fun PreventionHome(installed:InstalledExchangeState,cases:List<PreventionCase>,loading:Boolean,error:String,onRecord:(CmcExchange,DiagnosticApp)->Unit,onInspect:(CmcExchange,DiagnosticApp)->Unit,onCase:(PreventionCase)->Unit,onDiscovery:()->Unit,onAccounts:()->Unit,onReset:()->Unit,exchanges:List<Exchange> = emptyList(),preflight:PreflightState?=null,onAiSettings:()->Unit={}){
+@Composable fun PreventionHome(installed:InstalledExchangeState,cases:List<PreventionCase>,loading:Boolean,error:String,onRecord:(CmcExchange,DiagnosticApp)->Unit,onInspect:(CmcExchange,DiagnosticApp)->Unit,onCase:(PreventionCase)->Unit,onDiscovery:()->Unit,onAccounts:()->Unit,onReset:()->Unit,exchanges:List<Exchange> = emptyList(),preflight:PreflightState?=null,onAiSettings:()->Unit={},onOfficialVerification:(()->Unit)?=null){
  var confirmReset by remember{mutableStateOf(false)}
  LazyColumn(Modifier.fillMaxSize().testTag("prevention-home"),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   item{
@@ -74,6 +74,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
    Row{TextButton(onClick=installed::refresh,enabled=!installed.scanning,modifier=Modifier.testTag("home-rescan")){Text("다시 인식")};TextButton(onClick=onDiscovery){Text("못 찾은 앱 지정")}}
   }}}
   preflight?.let{state->item{Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){PreflightOverview(state,onAiSettings)}}}}
+  onOfficialVerification?.let{open->item{OutlinedButton(onClick=open,modifier=Modifier.fillMaxWidth().testTag("open-official-verification")){Text("공식 사유 · 신원 검증 결과")}}}
   if(!installed.scanning&&installed.error.isEmpty()&&installed.candidates.isEmpty())item{Text("일치하는 앱을 찾지 못했습니다. 다른 앱 이름·숨긴 앱·업무 프로필은 자동 인식되지 않을 수 있습니다.",style=MaterialTheme.typography.bodySmall)}
   items(installed.candidates,key={"app:"+it.app.packageName}){candidate->
    Card(Modifier.fillMaxWidth().testTag("home-app-${candidate.app.packageName}")){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
