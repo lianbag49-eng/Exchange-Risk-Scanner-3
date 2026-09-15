@@ -114,8 +114,10 @@ class MainActivity:ComponentActivity(){
   SideEffect{adviceEnabled=tips}
   Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101610),Bg,Color(0xFF03070B))))){
    Header{tab=3}
-   OutlinedButton(onClick={discovery=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-exchange-discovery")){Text("거래소 앱 자동 인식 · CMC 전체 목록")}
-   OutlinedButton(onClick={accountAudit=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-account-audit")){Text("계정 연결 · 전체 자동 점검")}
+   Row(Modifier.fillMaxWidth().padding(horizontal=20.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+    OutlinedButton(onClick={discovery=true},modifier=Modifier.weight(1f).testTag("open-exchange-discovery")){Text("거래소 목록")}
+    OutlinedButton(onClick={accountAudit=true},modifier=Modifier.weight(1f).testTag("open-account-audit")){Text("계정 연결 · 점검")}
+   }
    if(storageError.isNotEmpty())Note(storageError,Red)
    Box(Modifier.weight(1f)){
     when(tab){

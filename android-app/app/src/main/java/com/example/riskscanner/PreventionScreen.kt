@@ -63,9 +63,11 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
    Text("거래소의 안내, 당시 상황, 조치 후 결과를 함께 쌓습니다.",style=MaterialTheme.typography.bodySmall)
   }
   item{Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-   Text("내 폰의 거래소 앱",style=MaterialTheme.typography.titleLarge)
-   Text(if(installed.scanning)"설치된 앱을 자동으로 찾는 중…" else "설치 후보 ${installed.candidates.size}개",modifier=Modifier.testTag("home-installed-count"))
-   Text("첫 실행과 ERS로 돌아올 때 자동 조회합니다. 앱 목록 비교는 이 폰 안에서 처리합니다.",style=MaterialTheme.typography.bodySmall)
+   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+    Text("내 폰의 거래소 앱",style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
+    Text(if(installed.scanning)"자동 인식 중…" else "설치 후보 ${installed.candidates.size}개",modifier=Modifier.testTag("home-installed-count"))
+   }
+   Text("첫 실행·앱 복귀 시 자동 조회 · 이 폰에서만 비교",style=MaterialTheme.typography.bodySmall)
    if(installed.checkedAt.isNotEmpty())Text("마지막 조회 ${preventionTime(installed.checkedAt)}",style=MaterialTheme.typography.bodySmall)
    Text("앱 인식과 계정 연결은 별도입니다. 로그인 ID·KYC·실제 제한 사유는 아직 미확인입니다.",style=MaterialTheme.typography.bodySmall,modifier=Modifier.testTag("home-identity-boundary"))
    if(installed.error.isNotEmpty())Text(installed.error,color=MaterialTheme.colorScheme.error)
