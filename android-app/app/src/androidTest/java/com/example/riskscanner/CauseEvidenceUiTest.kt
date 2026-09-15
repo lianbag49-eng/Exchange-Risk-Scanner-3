@@ -19,9 +19,17 @@ class CauseEvidenceUiTest {
     @get:Rule val ui = createComposeRule()
     private val kb get() = CauseKnowledge(InstrumentationRegistry.getInstrumentation().targetContext)
     private fun fixture(k: CauseKnowledge, conflicting: Boolean): CauseReview {
-        val input = CauseInput(UUID.randomUUID().toString(), "other", k.version,
-            if (conflicting) listOf("device_offline", "device_online").map { CauseEvidence(it, "device_observation", "2026-09-15T09:00:00Z") } else emptyList())
+        val time = "2026-09-15T09:00:00Z"
+        // The catalog requires BOTH a reported network error and an offline observation.
+        // Online counter-evidence is retained rather than weakening that applicability rule.
+        val evidence = if (conflicting) listOf(
+            CauseEvidence("notice_network_error", "user_report", time),
+            CauseEvidence("device_offline", "device_observation", time),
+            CauseEvidence("device_online", "device_observation", time)
+        ) else emptyList()
+        val input = CauseInput(UUID.randomUUID().toString(), "other", k.version, evidence)
         val eligible = k.eligible(input).map { it.getString("id") }
+        if (conflicting) org.junit.Assert.assertTrue("Fixture must satisfy the unchanged catalog", "network_connectivity" in eligible)
         val id = UUID.randomUUID().toString()
         val result = JSONObject().put("requestId", id).put("caseId", input.caseId)
             .put("inputSha256", input.digest()).put("knowledgeVersion", k.version)
