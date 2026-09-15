@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {fundingView,leverageRequest,boundedPrice,fundingCashflow,fitsPosition} from '../terminal-core.js';
+import {fundingView,leverageRequest,boundedPrice,fundingCashflow,fitsPosition,makeTwap} from '../terminal-core.js';
 import {makeOrder} from '../order-validation.js';
 const meta={asset:0,szDecimals:4,maxLeverage:20,spot:false};
 test('hourly funding direction, rollover, unavailable and position cashflow',()=>{
@@ -15,3 +15,5 @@ test('market IOC bound stays inside requested slippage and respects price precis
 });
 
 test('reduce-only validation uses exact decimal quantities',()=>{assert.equal(fitsPosition('1.000000000000000001','1',false),false);assert.equal(fitsPosition('1.000000000000000001','-1.000000000000000002',true),true);assert.equal(fitsPosition('1','-2',false),false);});
+
+test('TWAP size and duration bounds are checked before a wallet request',()=>{assert.deepEqual(makeTwap(meta,'10','21',true,false,30,true),{a:0,b:true,s:'10',r:false,m:30,t:true});assert.throws(()=>makeTwap(meta,'1','21',true,false,30,false));assert.throws(()=>makeTwap(meta,'10','21',true,false,1441,false));assert.throws(()=>makeTwap(meta,'10.12345','21',true,false,30,false));});

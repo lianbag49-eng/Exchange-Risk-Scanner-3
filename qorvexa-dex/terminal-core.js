@@ -30,3 +30,11 @@ export function fitsPosition(size,position,buy){
  const negative=position.startsWith('-');const [p,pd]=decimal(negative?position.slice(1):position),[s,sd]=decimal(size);
  return p>0n&&s>0n&&buy===negative&&s*10n**BigInt(pd)<=p*10n**BigInt(sd);
 }
+export function makeTwap(meta,size,reference,buy,reduce,minutes,randomize){
+ if(!meta||!Number.isInteger(meta.asset)||!Number.isInteger(meta.szDecimals))throw Error('Market metadata unavailable');
+ const [sz,sd]=decimal(size),[px,pd]=decimal(reference);if(sz<=0n||px<=0n||sd>meta.szDecimals)throw Error('Check TWAP size precision');
+ if(sz*px<100n*10n**BigInt(sd+pd))throw Error('TWAP minimum total value is 100 USDC');
+ const m=Number(minutes);if(!Number.isInteger(m)||m<5||m>1440)throw Error('TWAP duration must be 5–1440 whole minutes');
+ if(meta.spot&&reduce)throw Error('Spot TWAP cannot be reduce-only');
+ return {a:meta.asset,b:!!buy,s:String(size).replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,''),r:!!reduce,m,t:!!randomize};
+}

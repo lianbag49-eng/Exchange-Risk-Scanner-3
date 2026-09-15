@@ -12,4 +12,4 @@ export function makeOrder(market,price,size,isBuy,reduceOnly,tif){
  const canonical=s=>s.includes('.')?s.replace(/0+$/,'').replace(/\.$/,''):s;
  return {a:market.asset,b:isBuy,p:canonical(price),s:canonical(size),r:reduceOnly,t:{limit:{tif}}};
 }
-export function freshMarket(m){return m?.network==='testnet'&&m?.book?.coin===m?.market?.value&&Date.now()-m.received<5000&&Math.abs(Date.now()-m.book.time)<10000;}
+export function freshMarket(m){return ['mainnet','testnet'].includes(m?.network)&&m?.book?.coin===m?.market?.value&&Date.now()-m.received<5000&&Math.abs(Date.now()-m.book.time)<10000;}

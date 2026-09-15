@@ -15,3 +15,14 @@ Sources:
 - https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint
 - https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding
 - https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals
+
+
+## Mainnet and TWAP update
+
+Mainnet and testnet now use separate transports, signing sources and wallet-network checks. Switching networks disconnects the trading session and clears the pending review. Mainnet orders, leverage changes and TWAP cancellation require a fresh real-funds acknowledgement in the review dialog. Wallet signatures remain mandatory; no keys or trading agents are stored. Existing order locks are scoped by account and network; legacy locks belong only to testnet.
+
+Venue-native TWAP: total quantity, 5–1440 minute duration, randomization, reduce-only, accepted ID persistence, history and cancellation of remaining slices. The pinned SDK currently supports up to 1440 minutes; the broader venue supports longer durations. Minimum TWAP notional is 100 USDC; venue suborders allow up to 3% slippage. Execution continues if the browser closes. No client timer submits slices. An ambiguous TWAP response locks submission; matching history requires explicit manual verification of the exact TWAP ID before unlocking.
+
+This supersedes the earlier mainnet/TWAP exclusions. Scale orders, amendments, subaccounts and portfolio margin are still not included. Real funded execution and independent security audit have not been performed.
+
+Deployment now uses /beltrix/; the former /qorvexa-dex/ link redirects while preserving its query and hash. `scripts/export-beltrix.mjs` produces an independent BELTRIX-only repository tree with `web/`, package files and its own GitHub Pages workflow. ERS is not included or deleted. Creating the separate GitHub repository and switching its Pages source still requires account-side setup if no repository-creation capability is connected.
