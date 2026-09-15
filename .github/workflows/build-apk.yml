@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc", "codex/ers-app-diagnostics", "codex/ers-ai-connection" ]
+    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc", "codex/ers-app-diagnostics", "codex/ers-ai-connection", "codex/ers-account-audit" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-apk.yml"
