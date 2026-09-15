@@ -6,9 +6,18 @@ import {createService} from '../server.mjs';
 import {STARTUP_SCOPE} from '../startup.mjs';
 import {directory,exchanges,canonicalDomain,researchExchange,researchResult,withinDomain} from '../exchange-research.mjs';
 import {preflightSummary} from '../preflight.mjs';
+import {providerFailure} from '../provider-errors.mjs';
 const request=()=>({requestId:randomUUID(),consent:true});
 const item={id:'a'.repeat(64),signals:['auto_time_off'],unknowns:['account_identity_unknown','exchange_risk_unknown']};
 const exchange=exchanges.get(270);
+test('provider diagnostics identify rejected parameters without logging provider messages or credentials',async()=>{
+ const logs=[],original=console.error;console.error=value=>logs.push(value);
+ try{
+  await assert.rejects(providerFailure({status:400,json:async()=>({error:{code:'unsupported_parameter',param:'text.format',message:'private sk-never-log-this'}})},'gpt-4.1-mini','research'),e=>e.code==='provider_search_configuration');
+  await assert.rejects(providerFailure({status:401,json:async()=>({error:{code:'invalid_api_key',param:'sk-never-log-this',message:'private'}})},'sk-never-log-this','preflight'),e=>e.code==='provider_credentials');
+ }finally{console.error=original}
+ assert.equal(JSON.parse(logs[0]).parameter,'text.format');assert.equal(logs.length,2);assert(!logs.join('').includes('never-log'));assert(!logs.join('').includes('private'));
+});
 const policy=id=>({exchangeId:id,slug:exchanges.get(id).slug,status:'public_guidance',topics:[{code:'appeal',sourceUrl:'https://example.com/help'}],actualCauseConfirmed:false,officialVerified:false});
 async function service(t,options={}){
  const server=createService({apiKey:'fake',model:'mock',tokens:{reviewer:'private-reviewer-token-'.repeat(3)},startupOptions:options});
