@@ -53,13 +53,14 @@ data class Exchange(val name:String,val mark:String,val color:Color,val logo:Str
 data class Record(val exchange:Exchange,val name:String,val uid:String,val country:String,val result:RiskResult,val snapshot:DeviceSnapshot,val time:String,val worker:String="",val kycReviews:List<KycReview> = emptyList(),val diagnostics:List<AppDiagnosticReport> = emptyList())
 
 class MainActivity:ComponentActivity(){
- private val exchanges by lazy{ExchangeCatalog.load(this)}
+ private var exchanges by mutableStateOf<List<Exchange>>(emptyList())
  private val recordStorage by lazy{RecordStorage(this)}
  private var storageError by mutableStateOf("")
  private var storageReadable=true
  private var adviceEnabled by mutableStateOf(true)
  private fun persist(items:List<Record>){if(!storageReadable)return;try{recordStorage.save(items);storageError=""}catch(e:Exception){storageError="암호화 저장 실패 · 현재 세션에만 보관됩니다"}}
  override fun onCreate(b:Bundle?){super.onCreate(b)
+  exchanges=ExchangeCatalog.load(this)
   window.statusBarColor=android.graphics.Color.rgb(5,10,16)
   window.navigationBarColor=android.graphics.Color.rgb(5,10,16)
   setContent{
@@ -82,6 +83,9 @@ class MainActivity:ComponentActivity(){
   val records=remember{mutableStateListOf<Record>().apply{try{addAll(recordStorage.load(exchanges))}catch(e:Exception){storageReadable=false;storageError="기록 복구 실패 · 기존 기록 보존을 위해 자동저장을 잠급니다"}}}
   var detail by remember{mutableStateOf<Record?>(null)}
   var accountAudit by remember{mutableStateOf(false)}
+  var discovery by remember{mutableStateOf(false)}
+  var discoveryApp by remember{mutableStateOf<DiagnosticApp?>(null)}
+  var discoveryRecord by remember{mutableStateOf<Record?>(null)}
   var save by remember{mutableStateOf(prefs.getBoolean("save",true))}
   var strict by remember{mutableStateOf(prefs.getBoolean("strict",false))}
   var tips by remember{mutableStateOf(prefs.getBoolean("tips",true))}
@@ -90,6 +94,7 @@ class MainActivity:ComponentActivity(){
   SideEffect{adviceEnabled=tips}
   Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101610),Bg,Color(0xFF03070B))))){
    Header{tab=3}
+   OutlinedButton(onClick={discovery=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-exchange-discovery")){Text("거래소 앱 자동 인식 · CMC 전체 목록")}
    OutlinedButton(onClick={accountAudit=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-account-audit")){Text("계정 연결 · 전체 자동 점검")}
    if(storageError.isNotEmpty())Note(storageError,Red)
    Box(Modifier.weight(1f)){
@@ -102,7 +107,12 @@ class MainActivity:ComponentActivity(){
    }
    Nav(tab){tab=it}
   }
-  if(accountAudit)ExchangeAccountDialog(exchanges,records,onEvidence={accountAudit=false;detail=it},close={accountAudit=false})
+  if(accountAudit)ExchangeAccountDialog(exchanges,records,onEvidence={accountAudit=false;detail=it},onDiscovery={accountAudit=false;discovery=true},close={accountAudit=false})
+  if(discovery)ExchangeDiscoveryDialog(exchanges,onCatalogChanged={exchanges=ExchangeCatalog.load(this)},onInspect={exchange,app->
+   discovery=false;discoveryApp=app
+   discoveryRecord=Record(exchange,exchange.name,"","",RiskResult(0,"UNKNOWN",emptyList()),DeviceInspector(this@MainActivity).snapshot(),SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()))
+  },onRegister={selected->discovery=false;ex=selected;uid="";custom="";tab=1},close={discovery=false})
+  discoveryRecord?.let{r->AppDiagnosticDialog(r,persisted=false,onSave={report->discoveryRecord=r.copy(diagnostics=(listOf(report)+r.diagnostics).take(5))},close={discoveryRecord=null;discoveryApp=null},initialApp=discoveryApp)}
   detail?.let{r->ReportDialog(r,persisted=records.contains(r),onReview={review->
    val updated=r.copy(kycReviews=(listOf(review)+r.kycReviews).take(10));detail=updated
    if(latest==r)latest=updated
@@ -137,8 +147,8 @@ class MainActivity:ComponentActivity(){
    Row(verticalAlignment=Alignment.CenterVertically){Text("Monitored Accounts",fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f));OutlinedButton(onClick=start,shape=RoundedCornerShape(10.dp)){Text("+ Add",color=Txt)}}
    if(accounts.isEmpty())Panel(){Text("등록된 계정이 없습니다",fontWeight=FontWeight.Bold);Text("거래소와 UID를 추가하면 점검 결과가 여기에 표시됩니다.",color=Muted,fontSize=12.sp)}
    accounts.forEach{r->HistoryRow(r){open(r)}}
-   Text("지원 거래소 52개 · CMC 상위 50 + Tapbit · BitMart",color=Gold2,fontSize=11.sp)
-   Text("목록 기준 2026.09.14 · 로고 오프라인 내장",color=Muted,fontSize=10.sp)
+   Text("거래소 목록 ${exchanges.size-1}개 · CMC 전체 ID 목록 기준",color=Gold2,fontSize=11.sp)
+   Text("앱 자동 인식에서 목록 갱신 · 설치 후보와 KYC 확인은 별도",color=Muted,fontSize=10.sp)
    Note("LOW는 수집된 신호의 낮은 점수입니다. 계정 안전·KYC 진위·거래 가능 여부를 보증하지 않습니다.",Gold)
   }
  }
@@ -147,7 +157,6 @@ class MainActivity:ComponentActivity(){
  @Composable private fun Scan(ex:Exchange,custom:String,uid:String,country:String,strict:Boolean,setEx:(Exchange)->Unit,setCustom:(String)->Unit,setUid:(String)->Unit,setCountry:(String)->Unit,done:(Record)->Unit){
   var menu by remember{mutableStateOf(false)}
   var search by remember{mutableStateOf("")}
-  var worker by remember{mutableStateOf("")}
   var evidence by remember{mutableStateOf(AccountEvidence())}
   var showEvidence by remember{mutableStateOf(false)}
   var result by remember{mutableStateOf<Record?>(null)}
@@ -161,14 +170,13 @@ class MainActivity:ComponentActivity(){
      Surface(modifier=Modifier.fillMaxSize(),color=Bg){Column(Modifier.fillMaxSize().padding(20.dp)){
       Row(verticalAlignment=Alignment.CenterVertically){Text("거래소 선택",fontSize=24.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));TextButton(onClick={menu=false}){Text("닫기")}}
       OutlinedTextField(value=search,onValueChange={search=it},label={Text("거래소 검색")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())
-      Column(Modifier.weight(1f).verticalScroll(rememberScrollState())){exchanges.filter{it.name.contains(search,true)}.forEach{o->
-       Row(Modifier.fillMaxWidth().clickable{setEx(o);menu=false;result=null}.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){Mark(o,42);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(o.name);Text(if(o.rank in 1..50)"CMC #${o.rank}" else if(o.rank>0)"추가 지원 거래소" else "직접 입력",color=Muted,fontSize=10.sp)};Text("›",color=Muted)};HorizontalDivider(color=Line)
+      val filtered=exchanges.filter{it.name.contains(search,true)}
+      androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f)){items(filtered.size){index->val o=filtered[index]
+       Row(Modifier.fillMaxWidth().clickable{setEx(o);menu=false;result=null}.padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically){Mark(o,42);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(o.name);Text(if(o.infoUrl.isNotBlank())"CMC 목록 · 계정 상태 미확인" else "직접 입력",color=Muted,fontSize=10.sp)};Text("›",color=Muted)};HorizontalDivider(color=Line)
       }}
      }}
     }}
     if(ex.name=="기타 거래소"){Spacer(Modifier.height(12.dp));OutlinedTextField(value=custom,onValueChange={setCustom(it);result=null},label={Text("거래소 이름")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())}
-    Spacer(Modifier.height(12.dp))
-    OutlinedTextField(value=worker,onValueChange={worker=it.take(40)},label={Text("작업자 (선택)")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())
     Spacer(Modifier.height(12.dp))
     OutlinedTextField(value=uid,onValueChange={setUid(it.filterNot(Char::isWhitespace));result=null},label={Text("거래소 UID")},supportingText={Text("이메일이 아닌 거래소 UID를 입력하세요")},singleLine=true,colors=fields(),modifier=Modifier.fillMaxWidth())
     Spacer(Modifier.height(12.dp))
@@ -191,7 +199,7 @@ class MainActivity:ComponentActivity(){
    if(error.isNotBlank())Note(error,Red)
    Button(onClick={
     error=when{name.isBlank()->"거래소 이름을 입력해 주세요.";uid.length<3->"거래소 UID를 3자 이상 입력해 주세요.";country !in Locale.getISOCountries().toSet()->"유효한 KYC 국가 코드(KR, JP 등)를 입력해 주세요.";evidence.loginCountry.isNotBlank()&&evidence.loginCountry !in Locale.getISOCountries().toSet()->"로그인 국가 코드를 확인하세요.";else->""}
-    if(error.isBlank()){val s=DeviceInspector(this@MainActivity).snapshot();val r=Record(ex,name,uid,country,AccountEvidenceEngine.combine(RiskEngine.evaluate(s,country,strict),evidence,country),s,SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()),worker);result=r;done(r)}
+    if(error.isBlank()){val s=DeviceInspector(this@MainActivity).snapshot();val r=Record(ex,name,uid,country,AccountEvidenceEngine.combine(RiskEngine.evaluate(s,country,strict),evidence,country),s,SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()));result=r;done(r)}
    },modifier=Modifier.fillMaxWidth().height(56.dp),shape=RoundedCornerShape(16.dp),colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Bg)){Text(if(result==null)"계정 추가 및 점검" else "다시 스캔하기",fontWeight=FontWeight.Black,letterSpacing=1.sp)}
    Text("계정 기록은 Android 보안 키로 암호화해 저장합니다.",color=Muted,fontSize=11.sp)
   }
@@ -220,7 +228,7 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.12");Info("Engine","ERS Device Guard");Info("Data Mode","공식 계정 조회 + 기기·AI 화면 검토");Info("Exchange catalog","52 · Offline logos")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.13");Info("Engine","ERS Device Guard");Info("Data Mode","CMC 앱 후보 인식 + 공식 계정 조회 + AI 화면 검토");Info("Exchange catalog","${exchanges.size-1} · CMC ID directory")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
    Note("기기 스캔은 로컬에서 처리합니다. 동의한 AI KYC 검토는 이미지·거래소·UID·국가를, 앱 AI 진단은 가린 이미지·선택 앱·기기 상태를 지정 서버로 전송합니다. 서버는 이미지를 외부 AI로 전달합니다.",Green)
@@ -244,7 +252,7 @@ class MainActivity:ComponentActivity(){
      OutlinedButton(onClick={showDiagnostic=true},modifier=Modifier.fillMaxWidth().testTag("open-app-diagnostic")){Text("거래소 앱 AI 진단 · 오류 화면")}
      r.diagnostics.forEach{review->Panel(){AppDiagnosticSummary(review)}}
      r.kycReviews.firstOrNull()?.let{review->Panel(){KycReviewSummary(review)}}
-     Panel(){Info("점검 시간",r.time);Info("입력 KYC 국가",r.country);Info("작업자",r.worker.ifBlank{"미지정"});Info("접속 국가 / IP","미확인");Info("기기 정보",r.snapshot.deviceModel.ifBlank{r.snapshot.networkType})}
+     Panel(){Info("점검 시간",r.time);Info("입력 KYC 국가",r.country);Info("접속 국가 / IP","미확인");Info("기기 정보",r.snapshot.deviceModel.ifBlank{r.snapshot.networkType})}
      Panel(){r.result.signals.forEach{Signal(it);HorizontalDivider(color=Line.copy(.4f))}}
      OutlinedButton(onClick=close,modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(12.dp)){Text("확인",color=Gold2)}
     }

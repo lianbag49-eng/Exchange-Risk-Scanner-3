@@ -29,7 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@Composable fun ExchangeAccountDialog(exchanges:List<Exchange>,records:List<Record>,onEvidence:(Record)->Unit,close:()->Unit){
+@Composable fun ExchangeAccountDialog(exchanges:List<Exchange>,records:List<Record>,onEvidence:(Record)->Unit,onDiscovery:()->Unit,close:()->Unit){
  val context=LocalContext.current;val scope=rememberCoroutineScope();val storage=remember{ExchangeAccountStorage(context)}
  val prefs=remember{context.getSharedPreferences("ers_exchange_audit_preferences",0)}
  var storageError by remember{mutableStateOf("")};var readable by remember{mutableStateOf(true)}
@@ -38,10 +38,8 @@ import kotlinx.coroutines.withContext
  var automatic by remember{mutableStateOf(prefs.getBoolean("automatic",false))}
  var adding by remember{mutableStateOf(false)};var provider by remember{mutableStateOf(AccountProvider.BYBIT)}
  var alias by remember{mutableStateOf("")};var apiKey by remember{mutableStateOf("")};var secret by remember{mutableStateOf("")};var targetUid by remember{mutableStateOf("")};var permitted by remember{mutableStateOf(false)}
- var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var allApps by remember{mutableStateOf(false)};var appsLoaded by remember{mutableStateOf(false)}
  val lifecycle=(context as? ComponentActivity)?.lifecycle;var resumed by remember{mutableStateOf(true)}
  DisposableEffect(lifecycle){val observer=LifecycleEventObserver{_,_->resumed=lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED)==true;if(!resumed)job?.cancel()};lifecycle?.addObserver(observer);onDispose{lifecycle?.removeObserver(observer)}}
- LaunchedEffect(Unit){try{apps=withContext(Dispatchers.IO){diagnosticApps(context)}}catch(e:CancellationException){throw e}catch(_:Exception){message="설치 앱 목록을 읽지 못했습니다"}finally{appsLoaded=true}}
  var displayTime by remember{mutableStateOf(System.currentTimeMillis())}
  LaunchedEffect(Unit){while(true){displayTime=System.currentTimeMillis();delay(30000)}}
  fun persist(next:List<LinkedExchangeAccount>):Boolean {
@@ -65,10 +63,6 @@ import kotlinx.coroutines.withContext
   }
  }
  LaunchedEffect(automatic){if(automatic){while(true){if(resumed&&!adding)runAll();delay(300000)}}}
- val candidates=if(allApps)apps else apps.filter{a->exchanges.any{e->
-  val name=e.name.lowercase(Locale.ROOT);val label=a.label.lowercase(Locale.ROOT)
-  name.length>=3&&(label==name||label.startsWith(name+" ")||label.startsWith(name+":")||label.startsWith(name+" -"))
- }}
  Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false,securePolicy=SecureFlagPolicy.SecureOn)){
   Surface(Modifier.fillMaxSize()){
    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(18.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
@@ -125,11 +119,8 @@ import kotlinx.coroutines.withContext
      Text("${record.name} · UID ${record.uid}\n"+if(linked)"공식 API 연결됨 · 위 조회 시각 확인" else "공식 계정 미연결 · 현재 KYC 상태 미확인")
      TextButton(onClick={onEvidence(record)},enabled=!busy){Text("이 계정의 AI 화면 근거 검토")}
     }
-    HorizontalDivider();Text("휴대폰 설치 앱 확인",style=MaterialTheme.typography.titleMedium)
-    Text("목록은 설치 앱 이름에 따른 후보입니다. 공식 발행자·로그인된 아이디는 확인하지 않았습니다. 앱 화면 검토는 사용자 선택과 캡처 동의가 필요합니다.",style=MaterialTheme.typography.bodySmall)
-    Row{Checkbox(allApps,{allApps=it});Text("모든 실행 가능한 앱 보기",modifier=Modifier.padding(top=10.dp))}
-    if(!appsLoaded)Text("설치 앱 확인 중…") else if(candidates.isEmpty())Text("이름이 일치하는 설치 앱 후보 없음 · 전체 앱에서 확인하세요")
-    candidates.forEach{app->TextButton(onClick={try{val intent=context.packageManager.getLaunchIntentForPackage(app.packageName)?:error("missing");context.startActivity(intent)}catch(_:Exception){message="선택 앱을 열지 못했습니다"}},enabled=!busy){Text("${app.label} · 아이디 미확인\n${app.packageName}")}}
+    HorizontalDivider()
+    OutlinedButton(onClick=onDiscovery,enabled=!busy,modifier=Modifier.fillMaxWidth()){Text("거래소 앱 자동 인식 · CMC 전체 목록")}
    }
   }
  }

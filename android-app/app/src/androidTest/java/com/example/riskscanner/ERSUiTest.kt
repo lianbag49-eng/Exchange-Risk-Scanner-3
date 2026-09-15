@@ -21,9 +21,18 @@ class ERSUiTest {
   shell("screencap -p /sdcard/Download/ers-ui/$name.png")
  }
  @Test fun offlineLogosAndAccountJourney(){
-  val catalog=ExchangeCatalog.load(ui.activity);assertEquals(53,catalog.size);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
+  val catalog=ExchangeCatalog.load(ui.activity);assertTrue(catalog.size>=2449);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
   screenshot("home")
+  ui.onNodeWithTag("open-exchange-discovery").performClick()
+  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("rescan-installed") and isEnabled()).fetchSemanticsNodes().size==1}
+  ui.onNodeWithTag("discovery-catalog-count").assertTextContains("CMC 목록",substring=true)
+  ui.onNodeWithTag("discovery-no-identity-claim").assertExists()
+  screenshot("exchange-discovery")
+  ui.onNodeWithText("CMC 전체 목록").performClick()
+  ui.onNodeWithTag("cmc-search").performTextInput("Tapbit")
+  ui.onNodeWithTag("cmc-entry-1645").assertExists()
+  ui.onNodeWithTag("close-discovery").performClick()
   ui.onNodeWithTag("open-account-audit").performClick()
   ui.onNodeWithTag("audit-all").assertIsNotEnabled()
   ui.onNodeWithTag("no-connected-accounts").performScrollTo().assertExists()
@@ -33,6 +42,7 @@ class ERSUiTest {
   ui.onNodeWithTag("connect-api-account").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("close-account-audit").performScrollTo().performClick()
   ui.onNodeWithTag("nav-1").performClick()
+  ui.onNodeWithText("작업자 (선택)").assertDoesNotExist()
   ui.onNodeWithContentDescription("Binance 로고").assertExists()
   screenshot("account")
   ui.onNodeWithText("선택 ›").performClick();screenshot("exchanges")
@@ -109,6 +119,20 @@ class ERSUiTest {
   assertTrue(runCatching{AppDiagnosticReport.parse(diagnostic.json().put("screenNotice","confirmed_ban"))}.isFailure)
   val falseClaim=review.json().put("officialVerified",true)
   assertTrue(runCatching{KycReview.parse(falseClaim)}.isFailure)
+ }
+ @Test fun unlinkedInstalledAppCanEnterReviewWithoutFabricatingAccountIdentity(){
+  ui.onNodeWithTag("open-exchange-discovery").performClick()
+  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("rescan-installed") and isEnabled()).fetchSemanticsNodes().size==1}
+  ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("show-unmatched"))
+  ui.onNodeWithTag("show-unmatched").performClick()
+  ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("assign-exchange-com.android.settings"))
+  ui.onNodeWithTag("assign-exchange-com.android.settings").performClick()
+  ui.onNodeWithTag("cmc-search").performTextInput("Tapbit")
+  ui.onNodeWithText("화면 검토").performClick()
+  ui.onNodeWithText("Tapbit 설치 후보 · 계정 미확인 · 오류 화면과 기기 상태 검토").assertExists()
+  ui.onNodeWithTag("diagnostic-capture").performScrollTo().assertIsEnabled()
+  ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
+  ui.onNodeWithTag("close-app-diagnostic").performScrollTo().performClick()
  }
  @Test fun aiConnectionTestUsesOnlyFixtureAndRejectsFailedInference(){
   assertEquals(DEFAULT_AI_SERVER,reviewServerAddress(null))
