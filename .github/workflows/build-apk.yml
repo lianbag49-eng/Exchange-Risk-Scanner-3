@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc", "codex/ers-app-diagnostics", "codex/ers-ai-connection", "codex/ers-account-audit", "codex/ers-cmc-discovery" ]
+    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc", "codex/ers-app-diagnostics", "codex/ers-ai-connection", "codex/ers-account-audit", "codex/ers-cmc-discovery", "codex/ers-prevention-home" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-apk.yml"
@@ -81,7 +81,7 @@ jobs:
           python - <<'PYCODE'
           from pathlib import Path
           import base64
-          for name in ['account','exchange-discovery','app-diagnostic-start','app-diagnostic-captured','ai-connection','capture-test-failure']:
+          for name in ['home','prevention-auto-home','prevention-case','account','exchange-discovery','app-diagnostic-start','app-diagnostic-captured','ai-connection','capture-test-failure']:
               p=Path('android-app/screenshots/'+name+'.png')
               if p.exists():
                   print('ERS_PREVIEW_'+name+':'+base64.b64encode(p.read_bytes()).decode())

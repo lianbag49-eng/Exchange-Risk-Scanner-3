@@ -35,6 +35,8 @@ import android.net.Uri
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val Bg=Color(0xFF070A09)
 private val Card=Color(0xFF101815)
@@ -86,6 +88,24 @@ class MainActivity:ComponentActivity(){
   var discovery by remember{mutableStateOf(false)}
   var discoveryApp by remember{mutableStateOf<DiagnosticApp?>(null)}
   var discoveryRecord by remember{mutableStateOf<Record?>(null)}
+  var discoveryCaseId by remember{mutableStateOf<String?>(null)}
+  val installed=rememberInstalledExchanges(this,exchanges)
+  val preventionStorage=remember{PreventionStorage(this)}
+  var preventionCases by remember{mutableStateOf<List<PreventionCase>>(emptyList())}
+  var preventionLoading by remember{mutableStateOf(true)}
+  var preventionError by remember{mutableStateOf("")}
+  var preventionDraft by remember{mutableStateOf<PreventionCase?>(null)}
+  LaunchedEffect(Unit){try{preventionCases=withContext(Dispatchers.IO){preventionStorage.load()}}catch(e:Exception){preventionError="원인 기록 복구 실패 · 기존 기록 보존을 위해 저장이 잠겨 있습니다"}finally{preventionLoading=false}}
+  fun saveCase(case:PreventionCase){
+   check(!preventionLoading&&preventionError.isEmpty())
+   val next=if(preventionCases.any{it.id==case.id})preventionCases.map{if(it.id==case.id)case else it} else listOf(case)+preventionCases
+   preventionStorage.save(next);preventionCases=next
+  }
+  fun fromCmc(e:CmcExchange)=exchanges.find{it.infoUrl.trimEnd('/')==e.infoUrl.trimEnd('/')}?:Exchange(e.name,e.name.take(2),Gold,infoUrl=e.infoUrl)
+  fun inspect(exchange:Exchange,app:DiagnosticApp,caseId:String?=null){
+   discovery=false;discoveryApp=app;discoveryCaseId=caseId
+   discoveryRecord=Record(exchange,exchange.name,"","",RiskResult(0,"UNKNOWN",emptyList()),DeviceInspector(this@MainActivity).snapshot(),SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()))
+  }
   var save by remember{mutableStateOf(prefs.getBoolean("save",true))}
   var strict by remember{mutableStateOf(prefs.getBoolean("strict",false))}
   var tips by remember{mutableStateOf(prefs.getBoolean("tips",true))}
@@ -94,12 +114,17 @@ class MainActivity:ComponentActivity(){
   SideEffect{adviceEnabled=tips}
   Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101610),Bg,Color(0xFF03070B))))){
    Header{tab=3}
-   OutlinedButton(onClick={discovery=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-exchange-discovery")){Text("거래소 앱 자동 인식 · CMC 전체 목록")}
-   OutlinedButton(onClick={accountAudit=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-account-audit")){Text("계정 연결 · 전체 자동 점검")}
+   Row(Modifier.fillMaxWidth().padding(horizontal=20.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+    OutlinedButton(onClick={discovery=true},modifier=Modifier.weight(1f).testTag("open-exchange-discovery")){Text("거래소 목록")}
+    OutlinedButton(onClick={accountAudit=true},modifier=Modifier.weight(1f).testTag("open-account-audit")){Text("계정 연결 · 점검")}
+   }
    if(storageError.isNotEmpty())Note(storageError,Red)
    Box(Modifier.weight(1f)){
     when(tab){
-     0->Home(latest?:records.firstOrNull(),records,{tab=1},{detail=it})
+     0->PreventionHome(installed,preventionCases,preventionLoading,preventionError,
+      onRecord={exchange,app->preventionDraft=PreventionCase(app=app,exchangeName=exchange.name,exchangeInfoUrl=exchange.infoUrl)},
+      onInspect={exchange,app->inspect(fromCmc(exchange),app)},onCase={preventionDraft=it},onDiscovery={discovery=true},onAccounts={tab=2},
+      onReset={try{preventionStorage.reset();preventionCases=emptyList();preventionError=""}catch(_:Exception){preventionError="원인 기록 삭제 실패"}})
      1->Scan(ex,custom,uid,country,strict,{ex=it},{custom=it},{uid=it},{country=it}){r->latest=r;if(save){records.add(0,r);if(records.size>200)records.removeAt(records.lastIndex);persist(records)};detail=r}
      2->History(records,{detail=it},{records.clear();persist(records)})
      else->Settings(save,strict,tips,privacy,{save=it;prefs.edit().putBoolean("save",it).apply()},{strict=it;prefs.edit().putBoolean("strict",it).apply()},{tips=it;prefs.edit().putBoolean("tips",it).apply()},{privacy=it;prefs.edit().putBoolean("privacy",it).apply()})
@@ -108,11 +133,19 @@ class MainActivity:ComponentActivity(){
    Nav(tab){tab=it}
   }
   if(accountAudit)ExchangeAccountDialog(exchanges,records,onEvidence={accountAudit=false;detail=it},onDiscovery={accountAudit=false;discovery=true},close={accountAudit=false})
-  if(discovery)ExchangeDiscoveryDialog(exchanges,onCatalogChanged={exchanges=ExchangeCatalog.load(this)},onInspect={exchange,app->
-   discovery=false;discoveryApp=app
-   discoveryRecord=Record(exchange,exchange.name,"","",RiskResult(0,"UNKNOWN",emptyList()),DeviceInspector(this@MainActivity).snapshot(),SimpleDateFormat("yyyy.MM.dd  HH:mm",Locale.KOREA).format(Date()))
-  },onRegister={selected->discovery=false;ex=selected;uid="";custom="";tab=1},close={discovery=false})
-  discoveryRecord?.let{r->AppDiagnosticDialog(r,persisted=false,onSave={report->discoveryRecord=r.copy(diagnostics=(listOf(report)+r.diagnostics).take(5))},close={discoveryRecord=null;discoveryApp=null},initialApp=discoveryApp)}
+  if(discovery)ExchangeDiscoveryDialog(exchanges,onCatalogChanged={exchanges=ExchangeCatalog.load(this)},onInspect={exchange,app->inspect(exchange,app)},onRegister={selected->discovery=false;ex=selected;uid="";custom="";tab=1},close={discovery=false})
+  preventionDraft?.let{draft->
+   val current=preventionCases.find{it.id==draft.id}?:draft
+   PreventionCaseDialog(current,preventionCases.any{it.id==draft.id},preventionCases,onSave={saveCase(it);preventionDraft=it},
+    onDelete={val next=preventionCases.filterNot{it.id==current.id};preventionStorage.save(next);preventionCases=next;preventionDraft=null},
+    onInspect={inspect(Exchange(current.exchangeName,current.exchangeName.take(2),Gold,infoUrl=current.exchangeInfoUrl),current.app,current.id)},close={preventionDraft=null})
+  }
+  discoveryRecord?.let{r->AppDiagnosticDialog(r,persisted=true,onSave={report->
+   val current=discoveryCaseId?.let{id->preventionCases.find{it.id==id}}
+   val case=current?:PreventionCase(app=report.app,exchangeName=r.name,exchangeInfoUrl=r.exchange.infoUrl)
+   val updated=case.withReview(report);saveCase(updated);discoveryCaseId=updated.id
+   discoveryRecord=r.copy(diagnostics=updated.reviews)
+  },close={discoveryRecord=null;discoveryApp=null;discoveryCaseId=null},initialApp=discoveryApp,saveLabel="원인 조사 이력에 암호화 저장")}
   detail?.let{r->ReportDialog(r,persisted=records.contains(r),onReview={review->
    val updated=r.copy(kycReviews=(listOf(review)+r.kycReviews).take(10));detail=updated
    if(latest==r)latest=updated
@@ -131,28 +164,6 @@ class MainActivity:ComponentActivity(){
    IconButton(onClick=settings){Icon(Icons.Outlined.Settings,"설정",tint=Txt)}
   }
  }
- @Composable private fun Home(latest:Record?,history:List<Record>,start:()->Unit,open:(Record)->Unit){
-  val accounts=history.distinctBy{it.name+":"+it.uid}
-  val worst=accounts.maxByOrNull{it.result.score}
-  val c=levelColor(worst?.result?.level)
-  Page{
-   Panel(c.copy(.25f)){
-    Row(Modifier.fillMaxWidth().clickable{if(worst==null)start() else open(worst)},verticalAlignment=Alignment.CenterVertically){
-     Icon(Icons.Outlined.VerifiedUser,null,tint=c,modifier=Modifier.size(64.dp));Spacer(Modifier.width(16.dp))
-     Column(Modifier.weight(1f)){Text("Overall Risk Level",fontSize=12.sp);Text(worst?.result?.level?:"READY",color=c,fontSize=30.sp,fontWeight=FontWeight.Bold);Text(if(worst==null)"첫 계정을 추가해 점검하세요" else "기기 진단 + 입력 정보 기준",color=c,fontSize=10.sp)}
-     Icon(Icons.Outlined.ChevronRight,"리포트",tint=Muted)
-    }
-   }
-   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Metric("Exchanges",accounts.map{it.name}.distinct().size.toString(),Txt,Modifier.weight(1f));Metric("High Risk",accounts.count{it.result.level=="HIGH"}.toString(),Red,Modifier.weight(1f));Metric("Medium",accounts.count{it.result.level=="MEDIUM"}.toString(),Amber,Modifier.weight(1f));Metric("Low",accounts.count{it.result.level=="LOW"}.toString(),Green,Modifier.weight(1f))}
-   Row(verticalAlignment=Alignment.CenterVertically){Text("Monitored Accounts",fontSize=18.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f));OutlinedButton(onClick=start,shape=RoundedCornerShape(10.dp)){Text("+ Add",color=Txt)}}
-   if(accounts.isEmpty())Panel(){Text("등록된 계정이 없습니다",fontWeight=FontWeight.Bold);Text("거래소와 UID를 추가하면 점검 결과가 여기에 표시됩니다.",color=Muted,fontSize=12.sp)}
-   accounts.forEach{r->HistoryRow(r){open(r)}}
-   Text("거래소 목록 ${exchanges.size-1}개 · CMC 전체 ID 목록 기준",color=Gold2,fontSize=11.sp)
-   Text("앱 자동 인식에서 목록 갱신 · 설치 후보와 KYC 확인은 별도",color=Muted,fontSize=10.sp)
-   Note("LOW는 수집된 신호의 낮은 점수입니다. 계정 안전·KYC 진위·거래 가능 여부를 보증하지 않습니다.",Gold)
-  }
- }
-
  @OptIn(ExperimentalMaterial3Api::class)
  @Composable private fun Scan(ex:Exchange,custom:String,uid:String,country:String,strict:Boolean,setEx:(Exchange)->Unit,setCustom:(String)->Unit,setUid:(String)->Unit,setCountry:(String)->Unit,done:(Record)->Unit){
   var menu by remember{mutableStateOf(false)}
@@ -228,7 +239,7 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.13");Info("Engine","ERS Device Guard");Info("Data Mode","CMC 앱 후보 인식 + 공식 계정 조회 + AI 화면 검토");Info("Exchange catalog","${exchanges.size-1} · CMC ID directory")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.14");Info("Engine","ERS 원인 조사 · 재발 예방");Info("Data Mode","첫 실행 앱 인식 + 원인·조치 이력 + 공식 조회 + AI");Info("Exchange catalog","${exchanges.size-1} · CMC ID directory")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
    Note("기기 스캔은 로컬에서 처리합니다. 동의한 AI KYC 검토는 이미지·거래소·UID·국가를, 앱 AI 진단은 가린 이미지·선택 앱·기기 상태를 지정 서버로 전송합니다. 서버는 이미지를 외부 AI로 전달합니다.",Green)
@@ -247,7 +258,7 @@ class MainActivity:ComponentActivity(){
     Page{
      Row(verticalAlignment=Alignment.CenterVertically){Mark(r.exchange,58);Spacer(Modifier.width(16.dp));Column{Text(r.name,fontSize=22.sp,fontWeight=FontWeight.Bold);Text("UID "+mask(r.uid),color=Muted,fontSize=13.sp)}}
      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){Pill(r.result.level+" RISK · "+r.result.score,c)}
-     Text("기기·입력 정보 기준 · 실제 계정 상태는 미검증",color=c,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
+     Text("기기·입력 정보 점수 · 거래소가 판정한 리스크나 사유가 아닙니다",color=c,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
      OutlinedButton(onClick={showAi=true},modifier=Modifier.fillMaxWidth().testTag("open-kyc-review")){Text("AI KYC 검토 · 증빙 이미지")}
      OutlinedButton(onClick={showDiagnostic=true},modifier=Modifier.fillMaxWidth().testTag("open-app-diagnostic")){Text("거래소 앱 AI 진단 · 오류 화면")}
      r.diagnostics.forEach{review->Panel(){AppDiagnosticSummary(review)}}
@@ -264,7 +275,7 @@ class MainActivity:ComponentActivity(){
   Box{OutlinedButton(onClick={expanded=true},modifier=Modifier.fillMaxWidth()){Text(label+" · "+value,modifier=Modifier.weight(1f));Text("⌄")};DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){options.forEach{v->DropdownMenuItem(text={Text(v)},onClick={change(v);expanded=false})}}}
  }
  @Composable private fun Nav(active:Int,select:(Int)->Unit){
-  val names=listOf("Home","Scan","Alerts","Settings")
+  val names=listOf("홈","계정 추가","계정 이력","설정")
   val icons=listOf(Icons.Outlined.Home,Icons.Outlined.Search,Icons.Outlined.Notifications,Icons.Outlined.Settings)
   Row(Modifier.fillMaxWidth().background(Bg).navigationBarsPadding().padding(8.dp)){names.forEachIndexed{i,n->Column(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable{select(i)}.testTag("nav-$i").padding(8.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(icons[i],null,tint=if(active==i)Gold2 else Muted,modifier=Modifier.size(24.dp));Spacer(Modifier.height(4.dp));Text(n,color=if(active==i)Gold2 else Muted,fontSize=10.sp)}}}
  }

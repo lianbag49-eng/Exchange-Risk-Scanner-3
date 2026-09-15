@@ -23,6 +23,8 @@ class ERSUiTest {
  @Test fun offlineLogosAndAccountJourney(){
   val catalog=ExchangeCatalog.load(ui.activity);assertTrue(catalog.size>=2449);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
+  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("home-rescan") and isEnabled()).fetchSemanticsNodes().size==1}
+  ui.onNodeWithTag("prevention-home").assertExists()
   screenshot("home")
   ui.onNodeWithTag("open-exchange-discovery").performClick()
   ui.waitUntil(15000){ui.onAllNodes(hasTestTag("rescan-installed") and isEnabled()).fetchSemanticsNodes().size==1}
@@ -107,7 +109,9 @@ class ERSUiTest {
   ui.onNodeWithTag("close-app-diagnostic").performScrollTo().performClick()
   ui.onNodeWithContentDescription("결과 닫기").performClick()
   ui.onNodeWithTag("nav-0").performClick()
-  ui.onNodeWithContentDescription("Tapbit 로고").assertExists();screenshot("home-account")
+  ui.onNodeWithTag("prevention-home").assertExists()
+  ui.onNodeWithTag("nav-2").performClick()
+  ui.onNodeWithContentDescription("Tapbit 로고").assertExists();screenshot("account-history")
   val storage=RecordStorage(ui.activity);val records=storage.load(catalog)
   val review=KycReview("test-review-id","a".repeat(64),"2026-09-15T00:00:00Z","mock-only","review_required","unknown",mapOf("exchange" to "match","uid" to "unreadable","country" to "unreadable"),listOf("uid_unreadable","country_unreadable"))
   assertTrue(records.first().diagnostics.isEmpty())
