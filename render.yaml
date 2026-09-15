@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ers-ai-review
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./kyc-service/Dockerfile
+    dockerContext: ./kyc-service
+    healthCheckPath: /healthz
+    autoDeployTrigger: off
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: ERS_REVIEW_TOKEN
+        generateValue: true
