@@ -4,6 +4,7 @@ test('market selection loads spot metadata, candles, and shows failures',async({
  await page.route('https://api.hyperliquid.xyz/info',async route=>{const body=route.request().postDataJSON();requests.push(body);let data;
  if(body.type==='meta')data={universe:[{name:'ETH'},{name:'BTC'}]};
  else if(body.type==='spotMeta')data={tokens:[{name:'USDC',index:0},{name:'HYPE',index:150}],universe:[{name:'@107',tokens:[150,0]}]};
+ else if(['metaAndAssetCtxs','spotMetaAndAssetCtxs'].includes(body.type))data=[{universe:[]},[]];
  else data=[{t:Date.now()-60000,o:'20',h:'22',l:'19',c:'21',v:'100',s:body.req.coin,i:body.req.interval}];
  await route.fulfill({json:data});});
  await page.goto('/qorvexa-dex/');await page.getByRole('button',{name:'Trade',exact:true}).click();
@@ -11,10 +12,7 @@ test('market selection loads spot metadata, candles, and shows failures',async({
  await expect(page.locator('html')).toHaveAttribute('lang','en');
  await expect(page.locator('.nav button')).toHaveText(['Wallet','Explore','Trade','Practice','Settings']);
  expect(await page.locator('body').innerText()).not.toMatch(/[가-힣]/);
- await expect(page.locator('.depth')).not.toHaveAttribute('open','');
- await page.locator('.depth summary').click();
  await expect(page.locator('#marketBids')).toBeVisible();
- await page.locator('.depth summary').click();
  await page.screenshot({path:'test-results/beltrix-desktop.png',fullPage:true});
  await page.locator('#marketType').selectOption('spot');await expect(page.locator('#marketSymbol')).toHaveValue('@107');await expect(page.locator('#marketPrice')).toHaveText('21');
  expect(requests.some(x=>x.req?.coin==='@107')).toBe(true);

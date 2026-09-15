@@ -7,7 +7,7 @@ export function makeOrder(market,price,size,isBuy,reduceOnly,tif){
  if(digits(price)>(market.spot?8:6)-market.szDecimals)throw Error('Check price decimal precision');
  if(!Number.isInteger(Number(price))&&price.replace('.','').replace(/^0+/,'').replace(/0+$/,'').length>5)throw Error('Price supports up to 5 significant figures');
  if(Number(price)*Number(size)<10)throw Error('Minimum order value is 10 USDC');
- if(!['Gtc','Alo'].includes(tif))throw Error('Unsupported order type');
+ if(!['Gtc','Alo','Ioc'].includes(tif))throw Error('Unsupported order type');
  if(market.spot&&reduceOnly)throw Error('Reduce only is not available for spot');
  const canonical=s=>s.includes('.')?s.replace(/0+$/,'').replace(/\.$/,''):s;
  return {a:market.asset,b:isBuy,p:canonical(price),s:canonical(size),r:reduceOnly,t:{limit:{tif}}};
