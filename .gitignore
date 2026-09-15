@@ -6,3 +6,9 @@ android-app/.gradle/
 **/build/
 
 qorvexa-dex/wallet.bundle.js
+
+
+# Server credentials and review data must never be committed
+.env
+.env.*
+kyc-service/node_modules/

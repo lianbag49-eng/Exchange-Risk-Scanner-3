@@ -33,8 +33,21 @@ class ERSUiTest {
   ui.onNodeWithText("거래소 UID").performScrollTo().performTextInput("123456789")
   ui.onNodeWithText("계정 추가 및 점검").performScrollTo().performClick()
   ui.onNodeWithText("스캔 결과").assertExists();screenshot("result")
+  ui.onNodeWithTag("open-kyc-review").performScrollTo().performClick()
+  ui.onNodeWithText("AI KYC 검토").assertExists()
+  ui.onNodeWithTag("kyc-endpoint").assertExists()
+  ui.onNodeWithTag("kyc-run").performScrollTo().assertIsNotEnabled()
+  screenshot("ai-kyc")
+  ui.onNodeWithText("닫기",useUnmergedTree=true).performClick()
   ui.onNodeWithContentDescription("결과 닫기").performClick()
   ui.onNodeWithTag("nav-0").performClick()
   ui.onNodeWithContentDescription("Tapbit 로고").assertExists();screenshot("home-account")
+  val storage=RecordStorage(ui.activity);val records=storage.load(catalog)
+  val review=KycReview("test-review-id","a".repeat(64),"2026-09-15T00:00:00Z","mock-only","review_required","unknown",mapOf("exchange" to "match","uid" to "unreadable","country" to "unreadable"),listOf("uid_unreadable","country_unreadable"))
+  storage.save(listOf(records.first().copy(kycReviews=listOf(review))))
+  assertEquals(review,storage.load(catalog).first().kycReviews.first())
+  val falseClaim=review.json().put("officialVerified",true)
+  assertTrue(runCatching{KycReview.parse(falseClaim)}.isFailure)
  }
 }
+

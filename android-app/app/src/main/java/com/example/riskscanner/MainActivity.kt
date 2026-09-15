@@ -50,7 +50,7 @@ private val Amber=Color(0xFFF4B64D)
 private val Red=Color(0xFFFF6D75)
 
 data class Exchange(val name:String,val mark:String,val color:Color,val logo:String?=null,val rank:Int=0,val infoUrl:String="")
-data class Record(val exchange:Exchange,val name:String,val uid:String,val country:String,val result:RiskResult,val snapshot:DeviceSnapshot,val time:String,val worker:String="")
+data class Record(val exchange:Exchange,val name:String,val uid:String,val country:String,val result:RiskResult,val snapshot:DeviceSnapshot,val time:String,val worker:String="",val kycReviews:List<KycReview> = emptyList())
 
 class MainActivity:ComponentActivity(){
  private val exchanges by lazy{ExchangeCatalog.load(this)}
@@ -100,7 +100,11 @@ class MainActivity:ComponentActivity(){
    }
    Nav(tab){tab=it}
   }
-  detail?.let{ReportDialog(it){detail=null}}
+  detail?.let{r->ReportDialog(r,persisted=records.contains(r),onReview={review->
+   val updated=r.copy(kycReviews=(listOf(review)+r.kycReviews).take(10));detail=updated
+   if(latest==r)latest=updated
+   val index=records.indexOf(r);if(index>=0){records[index]=updated;persist(records)}
+  },close={detail=null})}
  }
 
  @Composable private fun Header(settings:()->Unit){
@@ -209,14 +213,16 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.8");Info("Engine","ERS Device Guard");Info("Data Mode","On-device only");Info("Exchange catalog","52 · Offline logos")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.9");Info("Engine","ERS Device Guard");Info("Data Mode","기기 점검 + 선택적 AI 검토");Info("Exchange catalog","52 · Offline logos")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
-   Note("스캔 데이터는 기기에서만 분석되며 입력한 UID 원문을 외부 서버로 전송하지 않습니다.",Green)
+   Note("기기 스캔은 로컬에서 처리합니다. AI KYC 검토는 전송 동의 후에만 선택 이미지와 거래소·UID·국가를 지정 서버로 전송합니다.",Green)
   }
  }
 
- @Composable private fun ReportDialog(r:Record,close:()->Unit){
+ @Composable private fun ReportDialog(r:Record,persisted:Boolean,onReview:(KycReview)->Unit,close:()->Unit){
+  var showAi by remember{mutableStateOf(false)}
+  if(showAi)KycReviewDialog(r,persisted,{onReview(it);showAi=false}){showAi=false}
   val c=levelColor(r.result.level)
   androidx.compose.ui.window.Dialog(onDismissRequest=close,properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)){
    Surface(modifier=Modifier.fillMaxSize(),color=Bg){Column(Modifier.fillMaxSize()){
@@ -225,6 +231,8 @@ class MainActivity:ComponentActivity(){
      Row(verticalAlignment=Alignment.CenterVertically){Mark(r.exchange,58);Spacer(Modifier.width(16.dp));Column{Text(r.name,fontSize=22.sp,fontWeight=FontWeight.Bold);Text("UID "+mask(r.uid),color=Muted,fontSize=13.sp)}}
      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){Pill(r.result.level+" RISK · "+r.result.score,c)}
      Text("기기·입력 정보 기준 · 실제 계정 상태는 미검증",color=c,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
+     OutlinedButton(onClick={showAi=true},modifier=Modifier.fillMaxWidth().testTag("open-kyc-review")){Text("AI KYC 검토 · 증빙 이미지")}
+     r.kycReviews.firstOrNull()?.let{review->Panel(){KycReviewSummary(review)}}
      Panel(){Info("점검 시간",r.time);Info("입력 KYC 국가",r.country);Info("작업자",r.worker.ifBlank{"미지정"});Info("접속 국가 / IP","미확인");Info("기기 정보",r.snapshot.deviceModel.ifBlank{r.snapshot.networkType})}
      Panel(){r.result.signals.forEach{Signal(it);HorizontalDivider(color=Line.copy(.4f))}}
      OutlinedButton(onClick=close,modifier=Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(12.dp)){Text("확인",color=Gold2)}
@@ -275,3 +283,4 @@ class MainActivity:ComponentActivity(){
  private fun levelColor(s:String?)=when(s){"HIGH"->Red;"MEDIUM"->Amber;"LOW"->Green;else->Gold}
  private fun mask(s:String)=if(s.length<=4)"•".repeat(s.length) else s.take(2)+"•".repeat((s.length-4).coerceAtMost(6))+s.takeLast(2)
 }
+
