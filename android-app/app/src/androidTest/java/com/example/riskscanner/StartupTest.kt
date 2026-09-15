@@ -76,13 +76,13 @@ class StartupTest{
    ui.onNodeWithTag("startup-consent-accept").performClick()
    ui.waitUntil(20000){policies.size==targets.size}
    assertEquals(1,store.decision());assertEquals(targets.map{it.id}.toSet(),policies.toSet());assertEquals(2,calls.get())
-   ui.onNodeWithTag("startup-ai-count").assertTextContains("AI 검토 6/6")
+   ui.onNodeWithTag("startup-ai-count").assertTextEquals("기기 점검 6/6 · AI 검토 6/6")
    screenshot("startup-complete")
    ui.onNodeWithTag("prevention-home").performScrollToNode(hasTestTag("startup-open-coverage"))
    ui.onNodeWithTag("startup-open-coverage").performClick()
-   ui.onNodeWithTag("startup-coverage-count").assertTextContains("전체 2448개")
+   ui.onNodeWithTag("startup-coverage-count").assertTextEquals("전체 2448개 · 검색 2448개")
    ui.onNodeWithTag("startup-coverage-search").performTextInput("Toobit")
-   ui.onNodeWithTag("startup-coverage-count").assertTextContains("검색 1개")
+   ui.onNodeWithTag("startup-coverage-count").assertTextEquals("전체 2448개 · 검색 1개")
    screenshot("startup-coverage")
    assertEquals(2,calls.get())
   }finally{context.getSharedPreferences(prefName,0).edit().clear().commit()}
