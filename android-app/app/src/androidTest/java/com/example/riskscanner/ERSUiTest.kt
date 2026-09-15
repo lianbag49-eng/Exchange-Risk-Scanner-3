@@ -54,14 +54,24 @@ class ERSUiTest {
   val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
   if(android.os.Build.VERSION.SDK_INT>=33)automation.grantRuntimePermission(ui.activity.packageName,android.Manifest.permission.POST_NOTIFICATIONS)
   ui.onNodeWithTag("diagnostic-capture").performScrollTo().performClick()
+  automation.serviceInfo=automation.serviceInfo.apply{flags=flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS}
   fun systemClick(text:String):Boolean {
    val nodes=automation.rootInActiveWindow?.findAccessibilityNodeInfosByText(text).orEmpty()
    for(node in nodes){var n:android.view.accessibility.AccessibilityNodeInfo?=node;repeat(4){if(n?.isClickable==true)return n!!.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);n=n?.parent}}
    return false
   }
-  ui.waitUntil(10000){automation.rootInActiveWindow?.findAccessibilityNodeInfosByText("A single app")?.isNotEmpty()==true||automation.rootInActiveWindow?.findAccessibilityNodeInfosByText("Start now")?.isNotEmpty()==true}
-  if(systemClick("A single app")){ui.waitUntil(5000){systemClick("Entire screen")}}
-  ui.waitUntil(5000){systemClick("Start now")}
+  fun systemAwait(label:String,condition:()->Boolean){try{ui.waitUntil(10000,condition)}catch(e:Exception){
+   screenshot("capture-test-failure")
+   val labels=mutableListOf<String>()
+   fun visit(n:android.view.accessibility.AccessibilityNodeInfo?){if(n==null)return;if(n.text!=null)labels.add(n.text.toString());for(i in 0 until n.childCount)visit(n.getChild(i))}
+   visit(automation.rootInActiveWindow)
+   throw AssertionError(label+" · "+labels.joinToString(" | ").take(2000),e)
+  }}
+  systemAwait("system consent visible"){automation.rootInActiveWindow?.findAccessibilityNodeInfosByText("A single app")?.isNotEmpty()==true||automation.rootInActiveWindow?.findAccessibilityNodeInfosByViewId("android:id/button1")?.isNotEmpty()==true}
+  if(systemClick("A single app")){systemAwait("choose entire screen"){systemClick("Entire screen")}}
+  systemAwait("confirm screen sharing"){
+   automation.rootInActiveWindow?.findAccessibilityNodeInfosByViewId("android:id/button1")?.firstOrNull()?.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)==true||systemClick("Start now")||systemClick("Share screen")||systemClick("Start recording")
+  }
   ui.waitUntil(10000){DiagnosticCaptureBus.state.value.active&&DiagnosticCaptureBus.state.value.message.contains("거래소 오류 화면")}
   val nm=ui.activity.getSystemService(android.app.NotificationManager::class.java)
   ui.waitUntil(5000){nm.activeNotifications.any{it.id==81}}

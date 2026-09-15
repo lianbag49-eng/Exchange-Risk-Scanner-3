@@ -71,6 +71,7 @@ import kotlinx.coroutines.withContext
  fun openApp(){val app=selected?:return;try{val intent=context.packageManager.getLaunchIntentForPackage(app.packageName)?:error("앱 실행 화면을 찾지 못했습니다");context.startActivity(intent)}catch(e:Exception){message="앱을 열지 못했습니다. 설치·활성 상태를 확인하세요"}}
  val projection=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
   if(result.resultCode==Activity.RESULT_OK&&result.data!=null){
+   image?.fill(0);image=null;masks.clear();consent=false;report=null
    DiagnosticCaptureBus.state.value=DiagnosticCapture(owner,true,message="화면 공유를 준비하고 있습니다")
    try{ContextCompat.startForegroundService(context,Intent(context,DiagnosticCaptureService::class.java).setAction("start").putExtra("owner",owner).putExtra("result",result.resultCode).putExtra("consent",result.data));openApp()}
    catch(e:Exception){DiagnosticCaptureBus.clear(owner);message="화면 공유를 시작하지 못했습니다. 이미지 선택을 이용하세요"}
@@ -100,12 +101,13 @@ import kotlinx.coroutines.withContext
      Text("이름만으로 공식 앱 여부가 검증되지는 않습니다. 위 앱이 이 계정의 거래소 앱인지 확인하세요.",style=MaterialTheme.typography.bodySmall)
      Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton(onClick=::openApp,enabled=!busy){Text("앱 열기")};TextButton(onClick={choose=!choose},enabled=!busy&&!capturing){Text("앱 변경")};TextButton(onClick={runCatching{context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+app.packageName)))}.onFailure{message="앱 설정을 열지 못했습니다"}},enabled=!busy){Text("앱 설정")}}
     }
-    Text("기기 상태 · 네트워크 ${device.optString("networkType")} / VPN ${if(device.optBoolean("vpn"))"감지" else "미감지"} / 자동 시간 ${if(device.optBoolean("autoTime"))"켜짐" else "꺼짐"}",style=MaterialTheme.typography.bodySmall)
+    Text("기기에서 직접 확인한 상태\n네트워크 ${device.optString("networkType")} · 인터넷 검증 ${if(device.isNull("networkValidated"))"정보 없음" else if(device.optBoolean("networkValidated"))"확인됨" else "미확인"}\nVPN ${if(device.optBoolean("vpn"))"감지" else "미감지"} · 프록시 ${if(device.optBoolean("proxy"))"설정됨" else "미감지"} · 자동 시간 ${if(device.optBoolean("autoTime"))"켜짐" else "꺼짐"}",style=MaterialTheme.typography.bodySmall)
+    TextButton(onClick={device=diagnosticDevice(context)},enabled=!busy&&!capturing){Text("기기 상태 다시 확인 · AI 연결 없이 가능")}
     Text("2. 오류 화면 한 장 준비",style=MaterialTheme.typography.titleMedium)
     Text("화면 공유 허용 → 거래소 오류 화면 열기 → 알림에서 ‘현재 화면 1회 캡처’ → ERS로 돌아오기. Android 14 이상에서는 거래소 앱 하나만 선택할 수 있습니다.",style=MaterialTheme.typography.bodySmall)
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
      OutlinedButton(onClick=::startCapture,enabled=selected!=null&&!busy&&!capturing,modifier=Modifier.testTag("diagnostic-capture")){Text("화면 1회 캡처")}
-     OutlinedButton(onClick={picker.launch("image/*")},enabled=selected!=null&&!busy&&!capturing,modifier=Modifier.testTag("diagnostic-image-picker")){Text("이미지 선택")}
+     OutlinedButton(onClick={consent=false;picker.launch("image/*")},enabled=selected!=null&&!busy&&!capturing,modifier=Modifier.testTag("diagnostic-image-picker")){Text("이미지 선택")}
     }
     if(capturing)OutlinedButton(onClick={context.startService(Intent(context,DiagnosticCaptureService::class.java).setAction("stop").putExtra("owner",owner))}){Text("화면 공유 중지")}
     image?.let{bytes->

@@ -80,15 +80,16 @@ jobs:
         run: |
           python - <<'PYCODE'
           from pathlib import Path
-          import base64, io
-          from PIL import Image
-          p=Path('android-app/screenshots/app-diagnostic-start.png')
-          if p.exists():
-              im=Image.open(p).convert('RGB')
-              im.thumbnail((420,920))
-              out=io.BytesIO()
-              im.save(out,format='JPEG',quality=78)
-              print('ERS_DIAGNOSTIC_PREVIEW:'+base64.b64encode(out.getvalue()).decode())
+          import base64
+          for name in ['app-diagnostic-start','app-diagnostic-captured','capture-test-failure']:
+              p=Path('android-app/screenshots/'+name+'.png')
+              if p.exists():
+                  print('ERS_PREVIEW_'+name+':'+base64.b64encode(p.read_bytes()).decode())
+          for p in Path('android-app/app/build/outputs/androidTest-results').rglob('*.xml'):
+              import xml.etree.ElementTree as ET
+              for failure in ET.parse(p).iter('failure'):
+                  print('ERS_TEST_FAILURE:'+failure.attrib.get('message',''))
+                  print((failure.text or '')[:5000])
           PYCODE
 
       - name: Upload APK artifact

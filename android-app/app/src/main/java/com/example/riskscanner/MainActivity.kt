@@ -217,10 +217,10 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.9");Info("Engine","ERS Device Guard");Info("Data Mode","기기 점검 + 선택적 AI 검토");Info("Exchange catalog","52 · Offline logos")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.10");Info("Engine","ERS Device Guard");Info("Data Mode","기기 점검 + 선택적 AI 검토");Info("Exchange catalog","52 · Offline logos")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
-   Note("기기 스캔은 로컬에서 처리합니다. AI KYC 검토는 전송 동의 후에만 선택 이미지와 거래소·UID·국가를 지정 서버로 전송합니다.",Green)
+   Note("기기 스캔은 로컬에서 처리합니다. 동의한 AI KYC 검토는 이미지·거래소·UID·국가를, 앱 AI 진단은 가린 이미지·선택 앱·기기 상태를 지정 서버로 전송합니다. 서버는 이미지를 외부 AI로 전달합니다.",Green)
   }
  }
 
