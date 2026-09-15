@@ -308,7 +308,7 @@
       "manual": false
     },
     "api_kyc_followup": {
-      "label": "선택 계정 KYC 미승인 보고",
+      "label": "선택 계정 KYC 기본 단계 보고 · LEVEL_DEFAULT",
       "origin": "exchange_api",
       "exchanges": [
         "bybit"
@@ -551,7 +551,7 @@
         "binance_kyc",
         "bybit_kyc"
       ],
-      "meaning": "추가 확인 안내 또는 미승인 상태에 대응하는 후보입니다.",
+      "meaning": "추가 확인 안내 또는 API가 보고한 KYC 기본 단계에 대응하는 검토 후보입니다.",
       "limit": "KYC 레벨·승인 여부는 문서 진위 판정이 아닙니다. 완료 표시가 있어도 재심사 가능성은 남습니다. Bybit API 정보는 상태 범위만 제공합니다.",
       "checks": [
         "공식 KYC 페이지의 요청 항목·심사 상태 확인",
