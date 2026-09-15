@@ -144,7 +144,7 @@ class MainActivity:ComponentActivity(){
    val current=preventionCases.find{it.id==draft.id}?:draft
    PreventionCaseDialog(current,preventionCases.any{it.id==draft.id},preventionCases,onSave={saveCase(it);preventionDraft=it},
     onDelete={val next=preventionCases.filterNot{it.id==current.id};preventionStorage.save(next);preventionCases=next;preventionDraft=null},
-    onInspect={inspect(Exchange(current.exchangeName,current.exchangeName.take(2),Gold,infoUrl=current.exchangeInfoUrl),current.app,current.id)},exchange=exchanges.find{it.infoUrl==current.exchangeInfoUrl},close={preventionDraft=null})
+    onInspect={inspect(Exchange(current.exchangeName,current.exchangeName.take(2),Gold,infoUrl=current.exchangeInfoUrl),current.app,current.id)},exchange=exchanges.find{it.infoUrl==current.exchangeInfoUrl},liveAccounts=preflight.auditedAccounts,close={preventionDraft=null})
   }
   discoveryRecord?.let{r->AppDiagnosticDialog(r,persisted=true,onSave={report->
    val current=discoveryCaseId?.let{id->preventionCases.find{it.id==id}}

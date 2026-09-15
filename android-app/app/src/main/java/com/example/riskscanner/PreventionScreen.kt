@@ -103,7 +103,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
      Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){ExchangeBrandLogo(exchanges.find{it.infoUrl==case.exchangeInfoUrl}?:Exchange(case.exchangeName,case.exchangeName.take(2),androidx.compose.ui.graphics.Color(0xFFD9B56D)),32);Text(case.exchangeName+case.accountLabel.takeIf{it.isNotEmpty()}.let{if(it==null)"" else " · $it"},style=MaterialTheme.typography.titleMedium)}
      Text("${preventionNotices[case.noticeType]} · ${preventionOutcomes[case.outcome]}")
-     Text("${preventionTime(case.createdAt)} · 조치 ${case.updates.size} · AI 근거 ${case.reviews.size}",style=MaterialTheme.typography.bodySmall)
+     Text("${preventionTime(case.createdAt)} · 조치 ${case.updates.size} · 화면 근거 ${case.reviews.size} · 원인 분석 ${case.causeReviews.size}",style=MaterialTheme.typography.bodySmall)
      if(case.notice.isNotEmpty())Text(case.notice.take(120),maxLines=2)
     }
    }
@@ -127,11 +127,12 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
  Text("기록 시점의 상태입니다. 이전 발생 시점의 상태나 거래소의 판정 사유를 증명하지 않습니다.",style=MaterialTheme.typography.bodySmall)
 }
 
-@Composable fun PreventionCaseDialog(draft:PreventionCase,existing:Boolean,allCases:List<PreventionCase>,onSave:(PreventionCase)->Unit,onDelete:()->Unit,onInspect:()->Unit,exchange:Exchange?=null,close:()->Unit){
+@Composable fun PreventionCaseDialog(draft:PreventionCase,existing:Boolean,allCases:List<PreventionCase>,onSave:(PreventionCase)->Unit,onDelete:()->Unit,onInspect:()->Unit,exchange:Exchange?=null,liveAccounts:List<LinkedExchangeAccount> = emptyList(),close:()->Unit){
  val context=LocalContext.current
  var noticeType by remember(draft.id){mutableStateOf(draft.noticeType)};var notice by remember(draft.id){mutableStateOf(draft.notice)}
  var occurred by remember(draft.id){mutableStateOf(draft.occurredAt)};var account by remember(draft.id){mutableStateOf(draft.accountLabel)}
  var action by remember(draft.id){mutableStateOf("")};var support by remember(draft.id){mutableStateOf("")};var outcome by remember(draft.id){mutableStateOf(draft.outcome)}
+ var showCauses by remember(draft.id){mutableStateOf(false)}
  var message by remember(draft.id){mutableStateOf("")};var confirmDelete by remember{mutableStateOf(false)}
  Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)){
   Surface(Modifier.fillMaxSize()){
@@ -156,6 +157,8 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
      Text("현재 기록: ${preventionOutcomes[draft.outcome]}",modifier=Modifier.testTag("case-current-outcome"))
      val similar=allCases.filter{it.app.packageName==draft.app.packageName&&it.exchangeName==draft.exchangeName&&it.noticeType==draft.noticeType}
      Text("이 앱에서 같은 안내 유형 ${similar.size}건 · 해결 기록 ${similar.count{it.outcome=="resolved"}}건\n사용자가 남긴 사건 기준입니다. 원인·조치 효과의 통계적 검증은 아닙니다.",style=MaterialTheme.typography.bodySmall)
+     OutlinedButton(onClick={showCauses=true},modifier=Modifier.fillMaxWidth().testTag("case-cause-analysis")){Text("공식 기준 원인 분석 · 사후 대조")}
+     Text("원인 분석 ${draft.causeReviews.size}건 · ${causeComparison(draft)}",style=MaterialTheme.typography.bodySmall)
      OutlinedButton(onClick=onInspect,modifier=Modifier.fillMaxWidth().testTag("case-ai-review")){Text("이 사건에 오류 화면 AI 검토 추가")}
      draft.reviews.forEach{review->HorizontalDivider();Text("AI 화면 근거 · ${preventionTime(review.reviewedAt)}");AppDiagnosticSummary(review)}
      Text("조치와 이후 결과",style=MaterialTheme.typography.titleMedium)
@@ -175,9 +178,10 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
      TextButton(onClick={confirmDelete=true},modifier=Modifier.testTag("delete-prevention-case")){Text("이 사건 삭제")}
     }
     if(message.isNotEmpty())Text(message,modifier=Modifier.testTag("case-save-message"))
-    Text("이 기록은 폰 안에 암호화해 보관합니다. AI 검토는 따로 선택하고 전송에 동의한 화면만 사용합니다.",style=MaterialTheme.typography.bodySmall)
+    Text("이 기록은 폰 안에 암호화해 보관합니다. AI 검토는 따로 선택하고 미리보기에서 동의한 화면 또는 항목만 사용합니다.",style=MaterialTheme.typography.bodySmall)
    }
   }
  }
+ if(showCauses)CauseDialog(draft,onSave,liveAccounts,close={showCauses=false})
  if(confirmDelete)AlertDialog(onDismissRequest={confirmDelete=false},title={Text("이 사건 삭제")},text={Text("이 사건의 안내·조치·AI 검토 기록을 삭제합니다.")},confirmButton={TextButton(onClick={try{onDelete();confirmDelete=false}catch(_:Exception){message="삭제 실패";confirmDelete=false}}){Text("삭제")}},dismissButton={TextButton(onClick={confirmDelete=false}){Text("취소")}})
 }

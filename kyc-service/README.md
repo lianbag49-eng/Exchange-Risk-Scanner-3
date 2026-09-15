@@ -97,3 +97,18 @@ Render의 기존 서비스 Environment에 다음 값을 준비합니다. 기존 
 `completed`인 리뷰만 승인/거절을 보고합니다. GREEN은 업체가 구성된 검증 단계를 승인했다는 뜻이며 신분증 진위 단독 확인이나 거래소 KYC 승인을 의미하지 않습니다. 문서 위변조/편집 사유가 반환되면 해당 업체 보고로 표시하고 없는 사실을 만들지 않습니다. 사진이나 프로필을 제출하는 SDK, 안면 대조, 신규 검증 시작은 이 경로에서 실행하지 않습니다.
 
 검증: 가상 응답으로 인증·권한별 대상 격리·서명·공개 필드 최소화·오류/심사 중 처리·요청 중복·Android 결과 연결을 검사합니다. 실제 Sumsub 계정 결과와 실제 Binance 키 인증은 각 서비스의 유효한 권한으로 연결한 후에만 확인할 수 있습니다. `/healthz` 200 또는 미인증 경로의 401은 실제 모델/신원 검증 성공을 의미하지 않습니다.
+
+
+## ERS 1.17 — evidence-based cause hypotheses
+
+The incident screen now offers **공식 기준 원인 분석 · 사후 대조**. It works without screenshots using bounded incident observations and, optionally, a user-selected fresh read-only account result. The catalog covers 14 hypotheses from published Bybit errors/API KYC fields, Binance account status/KYC guidance, OKX withdrawal guidance and Android network observations. Other exchanges receive only applicable device checks; absent evidence remains unknown. This is partial documented coverage, not a reproduction of private exchange review systems.
+
+`kyc-service/cause-knowledge.json` and the identical Android asset contain reviewed source URLs, review date, applicability rules, supporting/counter evidence, limits and next checks. Last reviewed: 2026-09-15; version `2026-09-15.1`. Catalog changes require updating both files and shipping a compatible app; the server rejects version mismatches. Public documents are not fetched during each analysis.
+
+`POST /v1/causes` requires the existing ERS bearer token, an independent explicit consent, request UUID, case UUID, exchange code, knowledge version and bounded evidence codes/origins/timestamps. No raw notice, screenshot, UID, API credentials, prior AI guesses or follow-up notes are sent. API provenance is reported by the client and is not re-attested by the server. Account selection must be confirmed by the user; queries older than five minutes or mismatched UIDs are rejected. Current observations do not establish past incident conditions.
+
+The server derives eligible hypotheses and retains counter evidence deterministically. The external model can rank up to three eligible IDs using strict structured output; it cannot generate arbitrary claims, verdicts, probabilities or new source links. Supporting evidence, limitations and prevention checks come from the versioned catalog. No eligible rule means `insufficient_evidence` and no external inference. Existing rate limits, replay checks, request timeouts and no-store responses apply. Existing OPENAI_API_KEY, OPENAI_MODEL and ERS token configuration is reused. No new provider credentials are required for this endpoint.
+
+Hypothesis snapshots and append-only follow-up notes are encrypted with the incident records. The comparison uses the first prediction made before any follow-up, then the most recent user-reviewed follow-up classification. Later predictions are excluded from retrospective prediction comparisons. Direct observations and unknown reasons are excluded from official-reason comparisons. Support/notice records remain user transcriptions, not exchange-certified truth. No accuracy percentages, automatic training labels, background uploads or server-side incident retention are added. Older records remain readable.
+
+Examples of source boundaries: Bybit 10009 means regional service restriction, 10010 key IP mismatch, 10024 unspecified compliance rules, and 10027 unspecified transaction restriction. Generic HTTP 403 cannot identify one reason. Binance `isLocked` describes API trading status; GCR/IFER/UFR values do not identify the actual trigger. KYC status or provider approval does not by itself authenticate identity documents or bind a phone app session.
