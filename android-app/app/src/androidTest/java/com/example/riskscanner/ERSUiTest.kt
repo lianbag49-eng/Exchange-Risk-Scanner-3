@@ -25,7 +25,7 @@ class ERSUiTest {
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
   screenshot("home")
   ui.onNodeWithTag("open-exchange-discovery").performClick()
-  ui.onNodeWithTag("discovery-catalog-count").assertTextContains("CMC 목록")
+  ui.onNodeWithTag("discovery-catalog-count").assertTextContains("CMC 목록",substring=true)
   ui.onNodeWithTag("discovery-no-identity-claim").assertExists()
   screenshot("exchange-discovery")
   ui.onNodeWithText("CMC 전체 목록").performClick()
@@ -118,6 +118,19 @@ class ERSUiTest {
   assertTrue(runCatching{AppDiagnosticReport.parse(diagnostic.json().put("screenNotice","confirmed_ban"))}.isFailure)
   val falseClaim=review.json().put("officialVerified",true)
   assertTrue(runCatching{KycReview.parse(falseClaim)}.isFailure)
+ }
+ @Test fun unlinkedInstalledAppCanEnterReviewWithoutFabricatingAccountIdentity(){
+  ui.onNodeWithTag("open-exchange-discovery").performClick()
+  ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("show-unmatched"))
+  ui.onNodeWithTag("show-unmatched").performClick()
+  ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("assign-exchange-com.android.settings"))
+  ui.onNodeWithTag("assign-exchange-com.android.settings").performClick()
+  ui.onNodeWithTag("cmc-search").performTextInput("Tapbit")
+  ui.onNodeWithText("화면 검토").performClick()
+  ui.onNodeWithText("Tapbit 설치 후보 · 계정 미확인 · 오류 화면과 기기 상태 검토").assertExists()
+  ui.onNodeWithTag("diagnostic-capture").performScrollTo().assertIsEnabled()
+  ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
+  ui.onNodeWithTag("close-app-diagnostic").performScrollTo().performClick()
  }
  @Test fun aiConnectionTestUsesOnlyFixtureAndRejectsFailedInference(){
   assertEquals(DEFAULT_AI_SERVER,reviewServerAddress(null))

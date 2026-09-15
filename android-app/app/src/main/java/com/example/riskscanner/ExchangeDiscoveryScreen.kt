@@ -74,7 +74,7 @@ import kotlinx.coroutines.withContext
       if(filteredEntries.isEmpty())item{Text("목록에서 찾지 못했습니다 · CMC 등록 여부는 별도 확인 필요")}
      }
     }else{
-     LazyColumn(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(12.dp)){
+     LazyColumn(Modifier.weight(1f).testTag("discovery-app-list"),verticalArrangement=Arrangement.spacedBy(12.dp)){
       item{Text("계정 연결 없이 설치 후보를 찾습니다. 로그인 ID·KYC 진위는 미확인입니다. 앱 목록은 기기 안에서만 비교합니다.",modifier=Modifier.testTag("discovery-no-identity-claim"))}
       if(!scanning&&candidates.isEmpty())item{Text("일치하는 설치 후보 없음 · 미설치·다른 앱 이름·Android 조회 제한일 수 있습니다")}
       items(candidates,key={it.app.packageName}){candidate->
@@ -90,9 +90,9 @@ import kotlinx.coroutines.withContext
         TextButton(onClick={try{val intent=context.packageManager.getLaunchIntentForPackage(candidate.app.packageName)?:error("missing");context.startActivity(intent)}catch(_:Exception){message="앱 실행에 실패했습니다"}},enabled=candidate.app.enabled){Text("앱 열기")}
        }}
       }
-      item{Row{Checkbox(showAllApps,{showAllApps=it});Text("이름이 일치하지 않은 실행 앱도 보기",modifier=Modifier.padding(top=12.dp))}}
+      item{Row{Checkbox(showAllApps,{showAllApps=it},modifier=Modifier.testTag("show-unmatched"));Text("이름이 일치하지 않은 실행 앱도 보기",modifier=Modifier.padding(top=12.dp))}}
       if(showAllApps)items(apps.filter{it.packageName !in matchedPackages},key={"unmatched:"+it.packageName}){app->
-       ListItem(headlineContent={Text(app.label)},supportingContent={Text("거래소 미분류 · ${app.packageName}")},trailingContent={TextButton(onClick={selectedApp=app;catalogMode=true;search=""}){Text("거래소 지정")}})
+       ListItem(headlineContent={Text(app.label)},supportingContent={Text("거래소 미분류 · ${app.packageName}")},trailingContent={TextButton(onClick={selectedApp=app;catalogMode=true;search=""},modifier=Modifier.testTag("assign-exchange-${app.packageName}")){Text("거래소 지정")}})
       }
       item{Text("숨긴 앱·업무 프로필·복제 앱·웹 전용 거래소는 목록에 없을 수 있습니다. 화면 검토에는 캡처 및 전송 동의와 AI 서버 연결이 필요합니다.",style=MaterialTheme.typography.bodySmall)}
      }
