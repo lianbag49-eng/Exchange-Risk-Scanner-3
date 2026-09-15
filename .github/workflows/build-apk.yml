@@ -33,6 +33,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android SDK 35
         run: |
@@ -95,4 +97,3 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
-
