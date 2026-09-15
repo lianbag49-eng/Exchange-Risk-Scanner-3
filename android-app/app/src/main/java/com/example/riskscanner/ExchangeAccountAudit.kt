@@ -5,6 +5,10 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.net.ssl.HttpsURLConnection
 import org.json.JSONObject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 
 enum class AccountProvider(val title:String,val exchange:String,val host:String,val path:String,val docs:String) {
  BYBIT("Bybit · 개인 읽기 API","Bybit","api.bybit.com","/v5/user/query-api","https://bybit-exchange.github.io/docs/v5/user/apikey-info"),
@@ -109,3 +113,20 @@ fun apiKycLabel(status:ApiKycStatus)=when(status.state){
  else->"KYC 정보 미제공 · 미확인"
 }
 fun apiKycNeedsRefresh(status:ApiKycStatus,now:Long)=now<status.checkedAt||now-status.checkedAt>=300000
+
+internal data class AccountAuditBatch(val reason:String,val checked:Int,val total:Int,val failures:Int)
+internal suspend fun auditConnectedAccounts(accounts:List<LinkedExchangeAccount>,query:suspend(LinkedExchangeAccount)->ApiKycStatus,save:(LinkedExchangeAccount)->Boolean,progress:(Int,Int,LinkedExchangeAccount)->Unit={_,_,_->},clock:()->Long=System::currentTimeMillis):AccountAuditBatch {
+ var done=0;var failures=0
+ for(account in accounts){
+  currentCoroutineContext().ensureActive();progress(done+1,accounts.size,account)
+  var limited=false
+  val next=try{account.copy(status=query(account),lastAttempt=clock(),error="")}
+   catch(e:CancellationException){throw e}catch(e:Exception){failures++;limited=(e as? AccountAuditError)?.kind=="rate_limit";account.copy(lastAttempt=clock(),error=if(e is AccountAuditError)e.message.orEmpty() else "조회 실패 · 현재 상태 미확인")}
+  currentCoroutineContext().ensureActive()
+  if(!save(next))return AccountAuditBatch("storage_failed",done,accounts.size,failures)
+  done++
+  if(limited)return AccountAuditBatch("rate_limit",done,accounts.size,failures)
+  if(done<accounts.size)delay(300)
+ }
+ return AccountAuditBatch("completed",done,accounts.size,failures)
+}

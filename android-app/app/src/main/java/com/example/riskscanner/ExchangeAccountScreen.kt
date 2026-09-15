@@ -40,29 +40,27 @@ import kotlinx.coroutines.withContext
  var alias by remember{mutableStateOf("")};var apiKey by remember{mutableStateOf("")};var secret by remember{mutableStateOf("")};var targetUid by remember{mutableStateOf("")};var permitted by remember{mutableStateOf(false)}
  var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var allApps by remember{mutableStateOf(false)};var appsLoaded by remember{mutableStateOf(false)}
  val lifecycle=(context as? ComponentActivity)?.lifecycle;var resumed by remember{mutableStateOf(true)}
- DisposableEffect(lifecycle){val observer=LifecycleEventObserver{_,_->resumed=lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED)==true};lifecycle?.addObserver(observer);onDispose{lifecycle?.removeObserver(observer)}}
+ DisposableEffect(lifecycle){val observer=LifecycleEventObserver{_,_->resumed=lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED)==true;if(!resumed)job?.cancel()};lifecycle?.addObserver(observer);onDispose{lifecycle?.removeObserver(observer)}}
  LaunchedEffect(Unit){try{apps=withContext(Dispatchers.IO){diagnosticApps(context)}}catch(e:CancellationException){throw e}catch(_:Exception){message="설치 앱 목록을 읽지 못했습니다"}finally{appsLoaded=true}}
  var displayTime by remember{mutableStateOf(System.currentTimeMillis())}
  LaunchedEffect(Unit){while(true){displayTime=System.currentTimeMillis();delay(30000)}}
  fun persist(next:List<LinkedExchangeAccount>):Boolean {
   if(!readable)return false
-  return try{storage.save(next);accounts.clear();accounts.addAll(next);storageError="";true}catch(_:Exception){storageError="연결 정보 저장 실패 · 기존 저장 내용을 유지합니다";false}
+  return try{storage.save(next);displayTime=System.currentTimeMillis();accounts.clear();accounts.addAll(next);storageError="";true}catch(_:Exception){storageError="연결 정보 저장 실패 · 기존 저장 내용을 유지합니다";false}
  }
  fun runAll(){
   if(busy||!readable||accounts.isEmpty())return
   busy=true;job=scope.launch{
-   try{val queue=accounts.toList();var done=0
-    for(account in queue){
-     message="전체 점검 ${done+1}/${queue.size} · ${account.alias}"
-     var limited=false
-     val next=try{val result=withContext(Dispatchers.IO){queryExchangeAccount(account)};account.copy(status=result,lastAttempt=System.currentTimeMillis(),error="")}
-      catch(e:CancellationException){throw e}catch(e:Exception){limited=(e as? AccountAuditError)?.kind=="rate_limit";account.copy(lastAttempt=System.currentTimeMillis(),error=if(e is AccountAuditError)e.message.orEmpty() else "조회 실패 · 현재 상태 미확인")}
-     if(!persist(accounts.map{if(it.id==account.id)next else it})){message="저장 실패로 점검을 중단했습니다";return@launch}
-     done++
-     if(limited){message="요청 한도에 도달해 나머지 조회를 중단했습니다 · $done/${queue.size}";automatic=false;prefs.edit().putBoolean("automatic",false).apply();return@launch}
-     delay(300)
+   try{
+    val result=auditConnectedAccounts(accounts.toList(),
+     query={account->withContext(Dispatchers.IO){queryExchangeAccount(account)}},
+     save={next->persist(accounts.map{if(it.id==next.id)next else it})},
+     progress={done,total,account->message="전체 점검 $done/$total · ${account.alias}"})
+    message=when(result.reason){
+     "storage_failed"->"저장 실패로 점검을 중단했습니다"
+     "rate_limit"->{automatic=false;prefs.edit().putBoolean("automatic",false).apply();"요청 한도에 도달해 나머지 조회를 중단했습니다 · ${result.checked}/${result.total}"}
+     else->"연결 계정 ${result.checked}개 점검 종료 · 조회 실패 ${result.failures}개 · 미제공 항목은 미확인입니다"
     }
-    message="연결 계정 ${queue.size}개 점검 종료 · 조회 실패와 미제공 항목은 미확인입니다"
    }catch(e:CancellationException){message="점검 중단 · 완료되지 않은 계정은 이전 조회 결과입니다";throw e}finally{busy=false}
   }
  }

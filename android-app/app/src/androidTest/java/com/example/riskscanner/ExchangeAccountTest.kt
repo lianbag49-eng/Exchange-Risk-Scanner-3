@@ -6,6 +6,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.runBlocking
 
 class ExchangeAccountTest {
  private val now=1700000000000L
@@ -82,5 +84,24 @@ class ExchangeAccountTest {
    assertTrue(runCatching{storage.load()}.isFailure);assertEquals(tampered,prefs.getString("encrypted",null))
    storage.save(emptyList());assertTrue(storage.load().isEmpty())
   }finally{prefs.edit().apply{if(before==null)remove("encrypted") else putString("encrypted",before)}.commit()}
+ }
+
+ @Test fun allAccountsContinueAfterIndividualFailureAndStopOnLimitsOrCancellation()=runBlocking {
+  val first=account().copy(status=parseAccountAudit(account(),bybit(),now),lastAttempt=now)
+  val second=account().copy(id="22222222-2222-3333-4444-555555555555",uid="987654321")
+  val saved=mutableListOf<LinkedExchangeAccount>();val seen=mutableListOf<String>()
+  val complete=auditConnectedAccounts(listOf(first,second),query={a->seen.add(a.uid);if(a.uid==first.uid)throw AccountAuditError("api_rejected","Key revoked");parseAccountAudit(a,bybit(uid=a.uid),now+1000)},save={saved.add(it);true},clock={now+1000})
+  assertEquals(AccountAuditBatch("completed",2,2,1),complete);assertEquals(listOf(first.uid,second.uid),seen)
+  assertEquals(first.status,saved.first().status);assertTrue(saved.first().error.isNotEmpty());assertEquals(now+1000,saved.first().lastAttempt)
+  assertEquals(second.uid,saved.last().status!!.uid);assertEquals("",saved.last().error)
+  saved.clear();seen.clear()
+  val limited=auditConnectedAccounts(listOf(first,second),query={a->seen.add(a.uid);throw AccountAuditError("rate_limit","Rate limited")},save={saved.add(it);true})
+  assertEquals("rate_limit",limited.reason);assertEquals(1,seen.size);assertEquals(1,saved.size)
+  seen.clear()
+  val storageFailure=auditConnectedAccounts(listOf(first,second),query={a->seen.add(a.uid);first.status!!},save={false})
+  assertEquals("storage_failed",storageFailure.reason);assertEquals(1,seen.size)
+  var savedAfterCancel=false
+  try{auditConnectedAccounts(listOf(first,second),query={throw CancellationException("User stopped")},save={savedAfterCancel=true;true});fail("Cancellation must propagate")}catch(_:CancellationException){}
+  assertFalse(savedAfterCancel)
  }
 }
