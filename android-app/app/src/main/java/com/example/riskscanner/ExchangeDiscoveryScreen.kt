@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
   }catch(e:CancellationException){throw e}catch(_:Exception){message="CMC 갱신 실패 · 이전 목록 유지. 연결·요청 한도를 확인하세요"}finally{updating=false}}
  }
  LaunchedEffect(Unit){if(directory.needsRefresh(System.currentTimeMillis()))refresh()}
- fun exchange(e:CmcExchange)=exchanges.find{it.infoUrl.trimEnd('/')==e.infoUrl.trimEnd('/')}?:Exchange(e.name,e.name.take(2),Color(0xFFD9B56D),infoUrl=e.infoUrl)
+ fun exchange(e:CmcExchange)=catalogExchange(exchanges,e)
  val matchedPackages=candidates.map{it.app.packageName}.toSet()
  val filteredEntries=directory.entries.filter{it.name.contains(search,true)||it.slug.contains(search,true)}
  Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)){
@@ -68,7 +68,7 @@ import kotlinx.coroutines.withContext
      OutlinedTextField(search,{search=it.take(160)},label={Text("CMC 거래소 검색")},singleLine=true,modifier=Modifier.fillMaxWidth().testTag("cmc-search"))
      LazyColumn(Modifier.weight(1f)){
       items(filteredEntries,key={it.id}){e->
-       ListItem(modifier=Modifier.testTag("cmc-entry-${e.id}"),headlineContent={Text(e.name)},supportingContent={Text("${cmcStatus(e.status)} · ID ${e.id}")},trailingContent={TextButton(onClick={val app=selectedApp;if(app==null)onRegister(exchange(e)) else onInspect(exchange(e),app)}){Text(if(selectedApp==null)"계정 입력" else "화면 검토")}})
+       ListItem(modifier=Modifier.testTag("cmc-entry-${e.id}"),headlineContent={Text(e.name)},leadingContent={ExchangeBrandLogo(exchange(e))},supportingContent={Text("${cmcStatus(e.status)} · ID ${e.id}")},trailingContent={TextButton(onClick={val app=selectedApp;if(app==null)onRegister(exchange(e)) else onInspect(exchange(e),app)}){Text(if(selectedApp==null)"계정 입력" else "화면 검토")}})
        HorizontalDivider()
       }
       if(filteredEntries.isEmpty())item{Text("목록에서 찾지 못했습니다 · CMC 등록 여부는 별도 확인 필요")}
@@ -79,7 +79,7 @@ import kotlinx.coroutines.withContext
       if(!scanning&&candidates.isEmpty())item{Text("일치하는 설치 후보 없음 · 미설치·다른 앱 이름·Android 조회 제한일 수 있습니다")}
       items(candidates,key={it.app.packageName}){candidate->
        Card(Modifier.fillMaxWidth()){Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Text(candidate.app.label,style=MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){candidate.exchanges.firstOrNull()?.let{ExchangeBrandLogo(exchange(it))};Text(candidate.app.label,style=MaterialTheme.typography.titleMedium)}
         Text("${candidate.basis}\n${candidate.app.packageName}",style=MaterialTheme.typography.bodySmall)
         Text("공식 앱: 미확인\n로그인 ID: 미확인\nKYC 승인·신분증 진위: 미확인")
         if(!candidate.app.enabled)Text("앱이 비활성 상태입니다")

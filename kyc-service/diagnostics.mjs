@@ -34,5 +34,5 @@ export async function diagnoseImage(body,{apiKey,model,fetchFn=fetch}){
 export async function providerStatus({apiKey,model,fetchFn=fetch}){
  let r;try{r=await fetchFn('https://api.openai.com/v1/models/'+encodeURIComponent(model),{headers:{Authorization:'Bearer '+apiKey},redirect:'error',signal:AbortSignal.timeout(15000)})}catch{throw new ReviewError('provider_unavailable',502)}
  if(!r.ok)throw new ReviewError('provider_auth_or_model_unavailable',502);
- return {providerReachable:true,model,capabilities:['kyc','diagnostics'],inferenceTested:false};
+ return {providerReachable:true,model,capabilities:['kyc','diagnostics','preflight'],inferenceTested:false};
 }

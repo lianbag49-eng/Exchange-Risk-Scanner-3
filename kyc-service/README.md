@@ -63,3 +63,12 @@ Official references:
 - https://developer.android.com/media/grow/media-projection
 - https://developer.android.com/training/package-visibility/declaring
 - https://render.com/docs/blueprint-spec
+
+
+## 사진 없는 사전 검토 (Android 1.15)
+
+새 `preflight.mjs`와 `POST /v1/preflight`를 포함해 서버를 다시 배포해야 합니다. `OPENAI_API_KEY`, `OPENAI_MODEL`, `ERS_REVIEW_TOKEN(S)`은 기존 설정을 유지합니다. Dockerfile에 모듈을 포함했습니다. Render 작업 공간과 기존 `ers-ai-review` 서비스를 확인한 뒤 해당 저장소의 변경을 배포하세요. 새 서비스를 만들거나 기존 키를 공개할 필요는 없습니다.
+
+요청 형식: `{requestId, consent:true, items:[{id:<패키지 SHA-256>, signals:[<허용 코드>], unknowns:[<허용 코드>]}]}`. 최대 50개, 중복 ID 금지, 예상 외 필드 금지. 사진·UID·키·자유 텍스트를 받지 않습니다. 응답은 입력 해시와 관측 범위의 위험도, AI가 정리한 focus/checks 코드입니다. 공개된 로컬 분류가 위험도를 결정하며, AI는 계정의 실제 제한 사유를 판정하지 않습니다.
+
+`npm test`는 인증/동의/재전송/요청 제한, 개인정보 필드 거부, 위험도 범위, 모델 응답 변조·환각·거절 처리와 provider 전송 내용을 검사합니다. 실제 키를 사용한 검토는 앱의 **연결 + 가상 신호 AI 테스트**로 별도 확인할 수 있습니다.

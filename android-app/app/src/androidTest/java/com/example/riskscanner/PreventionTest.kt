@@ -36,7 +36,7 @@ class PreventionTest{
    ui.setContent{
     MaterialTheme(colorScheme=darkColorScheme(primary=Color(0xFFD9B56D),onPrimary=Color(0xFF070A09),background=Color(0xFF070A09),surface=Color(0xFF101815))){Surface{
      val installed=rememberInstalledExchanges(LocalContext.current,Unit,appReader={calls.incrementAndGet();listOf(app)},directoryReader={directory})
-     PreventionHome(installed,cases,false,"",onRecord={e,a->draft=PreventionCase(app=a,exchangeName=e.name,exchangeInfoUrl=e.infoUrl)},onInspect={_,_->},onCase={draft=it},onDiscovery={},onAccounts={},onReset={})
+     PreventionHome(installed,cases,false,"",onRecord={e,a->draft=PreventionCase(app=a,exchangeName=e.name,exchangeInfoUrl=e.infoUrl)},onInspect={_,_->},onCase={draft=it},onDiscovery={},onAccounts={},onReset={},exchanges=ExchangeCatalog.load(context))
      draft?.let{d->val current=cases.find{it.id==d.id}?:d
       PreventionCaseDialog(current,cases.any{it.id==d.id},cases,onSave={next->
        val updated=if(cases.any{it.id==next.id})cases.map{if(it.id==next.id)next else it} else listOf(next)+cases
