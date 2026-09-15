@@ -72,6 +72,7 @@ import kotlinx.coroutines.withContext
      }catch(e:CancellationException){throw e}catch(e:Exception){message=if(e is IllegalStateException||e is IllegalArgumentException)e.message.orEmpty() else "분석 또는 저장 실패 · 기존 기록은 유지됩니다"}finally{busy=false}}},enabled=!busy&&input!=null&&consent&&token.length>=32&&(account==null||sameAccount)&&case.causeReviews.size<20&&runCatching{kycEndpoint(endpoint)}.isSuccess,modifier=Modifier.fillMaxWidth().testTag("run-cause-analysis")){Text(if(busy)"조회 중…" else "원인 후보 분석·저장")}
     }
     1->{
+     CauseCaseTimeline(case)
      if(case.causeReviews.isEmpty())Text("아직 원인 분석이 없습니다. 분석 탭에서 근거를 확인하세요.")
      case.causeReviews.asReversed().forEach{CauseReviewView(it,kb);HorizontalDivider()}
     }
@@ -96,24 +97,5 @@ import kotlinx.coroutines.withContext
  Text("${kb.label(e.code)}\n$origin · ${preventionTime(e.observedAt)}",style=MaterialTheme.typography.bodySmall)
 }
 @Composable fun CauseReviewView(review:CauseReview,kb:CauseKnowledge){
- val context=LocalContext.current
- Text("${preventionTime(review.reviewedAt)} · 원인 후보",style=MaterialTheme.typography.titleMedium)
- Text("실제 심사 사유·KYC 진위 미확정 · 확률 점수 없음",modifier=Modifier.testTag("cause-boundary"))
- if(review.input.knowledgeVersion!=kb.version){Text("이전 공식 자료 버전 ${review.input.knowledgeVersion} · 후보: "+review.ranked.joinToString{causeLabels[it].orEmpty()});return}
- if(review.ranked.isEmpty())Text("근거 부족 · 원인 후보를 만들지 않았습니다. 공식 안내의 오류 코드·추가 요청·발생 시각을 확인하세요. 외부 AI 호출 없음.",modifier=Modifier.testTag("cause-insufficient"))
- review.ranked.forEachIndexed{index,id->val r=kb.rules.single{it.getString("id")==id};val support=kb.support(r,review.input);val counter=causeStrings(r,"counter").filter{code->review.input.evidence.any{it.code==code}}
-  Card(Modifier.fillMaxWidth().testTag("cause-result-$id")){Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-   Text("${index+1}. ${r.getString("title")}",style=MaterialTheme.typography.titleMedium)
-   Text(r.getString("meaning"));Text("지지 단서",style=MaterialTheme.typography.labelLarge)
-   support.forEach{code->review.input.evidence.find{it.code==code}?.let{CauseEvidenceView(it,kb)}}
-   Text("반대 단서·충돌",style=MaterialTheme.typography.labelLarge)
-   if(counter.isEmpty())Text("수집된 반대 단서 없음 · 반대 사실이 없다는 뜻은 아닙니다.",style=MaterialTheme.typography.bodySmall)
-   counter.forEach{code->review.input.evidence.find{it.code==code}?.let{CauseEvidenceView(it,kb)}}
-   Text(r.getString("limit"),style=MaterialTheme.typography.bodySmall)
-   Text("추가 확인·재발 예방",style=MaterialTheme.typography.labelLarge);causeStrings(r,"checks").forEach{Text("• $it",style=MaterialTheme.typography.bodySmall)}
-   kb.sourceIds(r,review.input.exchange).forEach{sourceId->val source=kb.sources.single{it.getString("id")==sourceId};TextButton(onClick={context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(source.getString("url"))))}){Text(source.getString("title"))}}
-  }}
- }
- val omitted=causeStrings(review.result,"eligible").filter{it !in review.ranked};if(omitted.isNotEmpty())Text("함께 검토한 다른 후보: "+omitted.joinToString{causeLabels[it].orEmpty()},style=MaterialTheme.typography.bodySmall)
- Text("공식 자료 버전 ${review.input.knowledgeVersion} · ${review.result.getString("model")}\n분석 순서는 조사 우선순위입니다. 기록 시각과 사건 발생 시각이 다를 수 있으며, 현재 정상 상태로 과거 제한을 부정하지 않습니다.",style=MaterialTheme.typography.bodySmall)
+ EvidenceFirstCauseReview(review,kb)
 }

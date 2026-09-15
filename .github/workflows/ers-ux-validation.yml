@@ -1,0 +1,63 @@
+name: Validate ERS evidence UX
+on:
+  push:
+    branches: ['update/ers-1.18']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ers-evidence-ux-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate service and cause catalog
+        working-directory: kyc-service
+        run: npm test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Unit tests and APK build
+        working-directory: android-app
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android screen regression tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          disable-animations: true
+          script: bash android-app/scripts/verify-ui.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ers-evidence-ux-tests
+          path: |
+            android-app/screenshots/
+            android-app/app/build/reports/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ERS-1.18.1-preview-APK
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
