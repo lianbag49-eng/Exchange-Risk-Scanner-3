@@ -34,7 +34,8 @@ import kotlinx.coroutines.withContext
 }
 @Composable fun KycReviewDialog(record:Record,persisted:Boolean,onSave:(KycReview)->Unit,close:()->Unit){
  val context=LocalContext.current;val prefs=remember{context.getSharedPreferences("ers_ai_review",Context.MODE_PRIVATE)};val scope=rememberCoroutineScope()
- var endpoint by remember{mutableStateOf(prefs.getString("endpoint","")?:"")};var token by remember{mutableStateOf("")}
+ var endpoint by remember{mutableStateOf(reviewServerAddress(prefs.getString("endpoint",null)))};var token by remember{mutableStateOf("")}
+ var connection by remember{mutableStateOf("")}
  var image by remember{mutableStateOf<ByteArray?>(null)};var busy by remember{mutableStateOf(false)};var consent by remember{mutableStateOf(false)};var error by remember{mutableStateOf("")};var review by remember{mutableStateOf<KycReview?>(null)}
  val preview=remember(image){image?.let{BitmapFactory.decodeByteArray(it,0,it.size)}}
  DisposableEffect(preview){onDispose{preview?.recycle()}}
@@ -46,8 +47,11 @@ import kotlinx.coroutines.withContext
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(14.dp)){
      Text(record.name+" · UID "+record.uid.take(2)+"••••"+record.uid.takeLast(2))
      Text("KYC 상태 화면을 선택하세요. AI는 표시된 문구와 UID·국가를 대조합니다. 신분증 진위·얼굴 인증·거래소 실제 승인 여부는 확인하지 않습니다.")
-     OutlinedTextField(endpoint,{endpoint=it;consent=false;review=null},label={Text("HTTPS 검토 서버 주소")},supportingText={Text("서버가 연결되어야 AI 판독이 가능합니다")},singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("kyc-endpoint"))
-     OutlinedTextField(token,{token=it;consent=false;review=null},label={Text("검토 서버 접속 토큰")},supportingText={Text("접속 토큰은 저장하지 않습니다 · OpenAI API 키 입력 금지")},visualTransformation=PasswordVisualTransformation(),singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth())
+     OutlinedTextField(endpoint,{endpoint=it;consent=false;review=null;connection=""},label={Text("HTTPS 검토 서버 주소")},supportingText={Text("서버가 연결되어야 AI 판독이 가능합니다")},singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("kyc-endpoint"))
+     OutlinedTextField(token,{token=it;consent=false;review=null;connection=""},label={Text("검토 서버 접속 토큰")},supportingText={Text("접속 토큰은 저장하지 않습니다 · OpenAI API 키 입력 금지")},visualTransformation=PasswordVisualTransformation(),singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth())
+     Text("가상 오류 이미지로 API 인증과 실제 AI 분석을 테스트합니다. API 사용량이 발생하며 계정 기록에는 저장하지 않습니다. KYC 상태 판독은 증빙 선택 후 별도로 요청하세요.",style=MaterialTheme.typography.bodySmall)
+     OutlinedButton(onClick={busy=true;connection="테스트 준비 중…";scope.launch{try{connection=withContext(Dispatchers.IO){aiConnectionSelfTest(endpoint,token,onProgress={stage->scope.launch{connection=stage}})};prefs.edit().putString("endpoint",endpoint.trim()).apply()}catch(e:CancellationException){throw e}catch(e:Exception){connection=e.message?:"AI 테스트 실패"}finally{busy=false}}},enabled=!busy&&token.trim().length>=32&&runCatching{kycEndpoint(endpoint)}.isSuccess,modifier=Modifier.testTag("kyc-test-ai")){Text("연결 + 가상 이미지 분석 테스트")}
+     if(connection.isNotBlank())Text(connection)
      OutlinedButton(onClick={picker.launch("image/*")},enabled=!busy,modifier=Modifier.fillMaxWidth()){Text(if(image==null)"증빙 이미지 선택" else "이미지 다시 선택")}
      preview?.let{Image(it.asImageBitmap(),"선택한 증빙",modifier=Modifier.fillMaxWidth().heightIn(max=280.dp))}
      Text("전송할 항목: 선택한 이미지, 거래소 이름, UID, KYC 국가. 지정한 검토 서버가 이미지 내용을 OpenAI에 전달합니다. 계정 입력값 대조는 검토 서버에서 처리합니다. 불필요한 개인정보는 선택 전에 가려 주세요.",style=MaterialTheme.typography.bodySmall)
