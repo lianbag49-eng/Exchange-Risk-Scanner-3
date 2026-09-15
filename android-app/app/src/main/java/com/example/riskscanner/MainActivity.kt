@@ -81,6 +81,7 @@ class MainActivity:ComponentActivity(){
   var latest by remember{mutableStateOf<Record?>(null)}
   val records=remember{mutableStateListOf<Record>().apply{try{addAll(recordStorage.load(exchanges))}catch(e:Exception){storageReadable=false;storageError="기록 복구 실패 · 기존 기록 보존을 위해 자동저장을 잠급니다"}}}
   var detail by remember{mutableStateOf<Record?>(null)}
+  var accountAudit by remember{mutableStateOf(false)}
   var save by remember{mutableStateOf(prefs.getBoolean("save",true))}
   var strict by remember{mutableStateOf(prefs.getBoolean("strict",false))}
   var tips by remember{mutableStateOf(prefs.getBoolean("tips",true))}
@@ -89,6 +90,7 @@ class MainActivity:ComponentActivity(){
   SideEffect{adviceEnabled=tips}
   Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF101610),Bg,Color(0xFF03070B))))){
    Header{tab=3}
+   OutlinedButton(onClick={accountAudit=true},modifier=Modifier.fillMaxWidth().padding(horizontal=20.dp).testTag("open-account-audit")){Text("계정 연결 · 전체 자동 점검")}
    if(storageError.isNotEmpty())Note(storageError,Red)
    Box(Modifier.weight(1f)){
     when(tab){
@@ -100,6 +102,7 @@ class MainActivity:ComponentActivity(){
    }
    Nav(tab){tab=it}
   }
+  if(accountAudit)ExchangeAccountDialog(exchanges,records,onEvidence={accountAudit=false;detail=it},close={accountAudit=false})
   detail?.let{r->ReportDialog(r,persisted=records.contains(r),onReview={review->
    val updated=r.copy(kycReviews=(listOf(review)+r.kycReviews).take(10));detail=updated
    if(latest==r)latest=updated
@@ -217,7 +220,7 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.11");Info("Engine","ERS Device Guard");Info("Data Mode","기기 점검 + 선택적 AI 검토");Info("Exchange catalog","52 · Offline logos")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.12");Info("Engine","ERS Device Guard");Info("Data Mode","공식 계정 조회 + 기기·AI 화면 검토");Info("Exchange catalog","52 · Offline logos")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
    Note("기기 스캔은 로컬에서 처리합니다. 동의한 AI KYC 검토는 이미지·거래소·UID·국가를, 앱 AI 진단은 가린 이미지·선택 앱·기기 상태를 지정 서버로 전송합니다. 서버는 이미지를 외부 AI로 전달합니다.",Green)

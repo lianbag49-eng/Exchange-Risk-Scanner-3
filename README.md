@@ -2,7 +2,27 @@
 
 Android device/account environment self-audit app. APK is built with GitHub Actions. iOS source is in `ios-app/`.
 
-## Android 1.11 · AI 서버 연결 및 샘플 분석
+## Android 1.12 · 공식 계정 연결과 전체 점검
+
+메인의 **계정 연결 · 전체 자동 점검**에서 권한 있는 계정을 연결하고, 연결한 계정 전체를 조회할 수 있습니다. 자동 점검을 켜면 이 화면이 활성화된 동안 5분마다 반복합니다. 백그라운드·앱 종료 후에는 예약 점검하지 않습니다.
+
+| 거래소 | 연결 방식 | 확인하는 내용 |
+| --- | --- | --- |
+| Bybit Global | 시스템 생성 HMAC 읽기 전용 API 키 | API 키의 UID, KYC 레벨·지역, 메인/서브계정 응답 구분, 읽기 전용 권한 |
+| Toobit | 제휴 계정 API 키와 조회할 초대 계정 UID | 해당 제휴 관계에서 조회 가능한 UID의 KYC 통과 여부. 일반 개인 API는 지원하지 않음 |
+| 그 외 | 아직 공식 계정 조회 미지원 | 기존 AI 화면 근거 검토 이용 가능. 현재 KYC 미확인으로 표시 |
+
+공식 응답의 조회 시각과 출처를 표시합니다. UID 불일치·권한 부족·조회 실패는 정상으로 처리하지 않습니다. 알 수 없는 KYC 값은 미확인이고, 5분 이상 지난 결과는 재조회 필요로 표시합니다. Bybit 쓰기 권한 키는 연결을 거부합니다. Toobit API는 키 권한 상세를 반환하지 않으므로 읽기 전용 키임을 사용자가 확인해야 하며, 제휴 조회 권한과 읽기 전용 확인 여부를 따로 표시합니다.
+
+API 키는 Android Keystore AES-256-GCM으로 기기에 암호화해 보관하고, 거래소의 고정된 조회 전용 HTTPS 경로에만 요청합니다. 키와 공식 API 응답을 AI 서버로 전송하지 않습니다. 연결 화면은 화면 캡처를 차단하며, 연결 해제로 저장 키를 삭제할 수 있습니다. 계정 연결 최초 확인과 자동 점검 모두 거래·주문·출금 API를 호출하지 않습니다.
+
+**지원 범위:** 앱 목록은 이름으로 찾은 설치 후보이며 로그인된 계정 목록이 아닙니다. 다른 앱의 비공개 로그인 ID를 추출하거나, KYC 화면을 자동 순회하는 기능은 구현하지 않았습니다. 공식 API의 KYC 승인 상태도 신분증 자체의 진위를 증명하지 않습니다. 화면 검토는 사용자가 캡처에 동의한 이미지만 다루고 공식 API 결과와 구분합니다. 이 기능은 Android 전용이며 iOS에 반영되지 않았습니다.
+
+검증은 가상 응답으로 HMAC 서명·UID 일치·권한 거부·미확인 처리·암호화 보관과 Android 화면 흐름을 검사합니다. 실제 거래소 계정 인증 성공은 사용자의 초기 연결 이후 확인해야 합니다.
+
+공식 근거: [Bybit 계정 API](https://bybit-exchange.github.io/docs/v5/user/apikey-info), [Bybit 인증 방식](https://bybit-exchange.github.io/docs/v5/guide), [Toobit 제휴 API](https://api-docs.toobit.com/api/agent.html), [Toobit 인증 방식](https://api-docs.toobit.com/api/basic-information.html), [Android 앱 격리](https://source.android.com/docs/security/app-sandbox).
+
+## AI 서버 연결 및 샘플 분석 (1.11에서 추가)
 
 Android의 AI KYC 검토와 거래소 앱 AI 진단에 `https://ers-ai-review.onrender.com`을 기본 적용합니다. 기존에 저장한 사용자 지정 주소는 유지합니다. Render의 `ERS_REVIEW_TOKEN`은 앱의 세션용 접속 토큰 칸에만 입력하며 공개 APK·저장소에는 포함하지 않습니다.
 
