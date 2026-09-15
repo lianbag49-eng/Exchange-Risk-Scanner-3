@@ -80,8 +80,8 @@ class ERSUiTest {
   ui.waitUntil(10000){!DiagnosticCaptureBus.state.value.active}
   ui.runOnUiThread{ui.activity.startActivity(android.content.Intent(ui.activity,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))}
   ui.onNodeWithTag("diagnostic-image-preview").performScrollTo().assertExists()
-  ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
   screenshot("app-diagnostic-captured")
+  ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("close-app-diagnostic").performScrollTo().performClick()
   ui.onNodeWithContentDescription("결과 닫기").performClick()
   ui.onNodeWithTag("nav-0").performClick()

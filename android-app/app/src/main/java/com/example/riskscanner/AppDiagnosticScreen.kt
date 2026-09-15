@@ -58,13 +58,13 @@ import kotlinx.coroutines.withContext
  val context=LocalContext.current;val scope=rememberCoroutineScope();val owner=remember{UUID.randomUUID().toString()}
  val prefs=remember{context.getSharedPreferences("ers_ai_review",0)}
  var endpoint by remember{mutableStateOf(prefs.getString("endpoint","")?:"")};var token by remember{mutableStateOf("")}
- var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var query by remember{mutableStateOf("")};var selected by remember{mutableStateOf<DiagnosticApp?>(null)}
+ var appsLoading by remember{mutableStateOf(true)};var apps by remember{mutableStateOf<List<DiagnosticApp>>(emptyList())};var query by remember{mutableStateOf("")};var selected by remember{mutableStateOf<DiagnosticApp?>(null)}
  var choose by remember{mutableStateOf(true)};var image by remember{mutableStateOf<ByteArray?>(null)};val masks=remember{mutableStateListOf<MaskRect>()}
  var consent by remember{mutableStateOf(false)};var busy by remember{mutableStateOf(false)};var message by remember{mutableStateOf("")};var connection by remember{mutableStateOf("")};var report by remember{mutableStateOf<AppDiagnosticReport?>(null)}
  var device by remember{mutableStateOf(diagnosticDevice(context))};val capture by DiagnosticCaptureBus.state.collectAsState();val capturing=capture.owner==owner&&capture.active
  val currentImage by rememberUpdatedState(image)
  fun accept(bytes:ByteArray){image?.fill(0);image=bytes;masks.clear();consent=false;report=null;device=diagnosticDevice(context)}
- LaunchedEffect(Unit){apps=withContext(Dispatchers.IO){diagnosticApps(context)}}
+ LaunchedEffect(Unit){try{apps=withContext(Dispatchers.IO){diagnosticApps(context)}}finally{appsLoading=false}}
  LaunchedEffect(capture){if(capture.owner==owner){message=capture.message;if(capture.image!=null){accept(capture.image!!.copyOf());DiagnosticCaptureBus.clear(owner)}}}
  DisposableEffect(owner){onDispose{context.stopService(Intent(context,DiagnosticCaptureService::class.java));DiagnosticCaptureBus.clear(owner);currentImage?.fill(0)}}
  val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->if(uri!=null){busy=true;scope.launch{try{val bytes=withContext(Dispatchers.IO){prepareKycImage(context,uri)};accept(bytes);message="전송할 화면을 확인하고 개인정보를 가려 주세요"}catch(e:Exception){message=e.message?:"이미지 준비 실패"}finally{busy=false}}}}
@@ -83,7 +83,7 @@ import kotlinx.coroutines.withContext
  val configured=runCatching{kycEndpoint(endpoint)}.isSuccess&&token.trim().length>=32
  Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)){
   Surface(modifier=Modifier.fillMaxSize(),color=Color(0xFF101115),contentColor=Color.White){
-   Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
+   Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding().padding(20.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("거래소 앱 AI 진단",style=MaterialTheme.typography.titleLarge);TextButton(onClick=close,modifier=Modifier.testTag("close-app-diagnostic")){Text("닫기")}}
     Text("${record.name} 계정 · 오류 화면과 기기 상태 검토",color=Color(0xFFE5C77F))
     Text("앱의 비공개 데이터·서버 로그에는 접근하지 않습니다. 인증 입력 화면, OTP, 비밀번호, 시드·개인키는 제외하세요. 계정 제한의 실제 사유는 거래소 확인이 필요합니다.",style=MaterialTheme.typography.bodySmall)
@@ -92,7 +92,7 @@ import kotlinx.coroutines.withContext
      OutlinedTextField(query,{query=it},label={Text("앱 이름 또는 패키지 검색")},singleLine=true,modifier=Modifier.fillMaxWidth().testTag("diagnostic-app-search"))
      Column(Modifier.fillMaxWidth().heightIn(max=220.dp).verticalScroll(rememberScrollState())){
       val filtered=apps.filter{it.label.contains(query,true)||it.packageName.contains(query,true)}
-      if(filtered.isEmpty())Text("표시할 앱이 없습니다. 이 기기에 앱이 설치되어 있는지 확인하세요.")
+      if(appsLoading)Text("설치된 앱을 불러오고 있습니다…") else if(filtered.isEmpty())Text("검색 결과가 없습니다. 앱 이름·패키지명 또는 설치 상태를 확인하세요.")
       filtered.forEach{app->TextButton(onClick={selected=app;choose=false;image?.fill(0);image=null;masks.clear();consent=false;report=null;message=""},enabled=!busy&&!capturing,modifier=Modifier.fillMaxWidth()){Text("${app.label} · ${app.version}\n${app.packageName}",modifier=Modifier.fillMaxWidth())}}
      }
     }

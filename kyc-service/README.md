@@ -39,7 +39,7 @@ Preview the image, drag black rectangles over unnecessary personal information, 
 
 Up to five reports per saved account are encrypted in the existing Android storage; old records load with an empty diagnostics history. Raw images are not persisted by ERS or this service. iOS retains the 1.9 image-based KYC workflow; cross-app enumeration and screen capture in this release are Android-only.
 
-CI checks the server with mocked provider responses and Android 35 device tests for disabled submission gates, app visibility, flattened image masks, encrypted history and rejection of a forged capture grant. A real third-party app's protected screen, a complete user-granted capture on physical hardware, and production AI inference still require validation on the user's device/configured provider. CI does not claim those have passed.
+CI checks the server with mocked provider responses and Android 35 device tests for disabled submission gates, app visibility, flattened image masks, encrypted history, rejection of a forged capture grant, and a complete Android system-consented one-shot capture of the emulator Settings app. A real third-party app's protected screen, a complete user-granted capture on physical hardware, and production AI inference still require validation on the user's device/configured provider. CI does not claim those have passed.
 
 ## App flow
 
