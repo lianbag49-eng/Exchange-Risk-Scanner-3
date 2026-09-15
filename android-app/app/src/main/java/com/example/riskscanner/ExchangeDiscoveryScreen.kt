@@ -61,14 +61,14 @@ import kotlinx.coroutines.withContext
      OutlinedButton(onClick={revision++},enabled=!scanning,modifier=Modifier.testTag("rescan-installed")){Text(if(scanning)"인식 중…" else "설치 앱 다시 인식")}
      TextButton(onClick={refresh()},enabled=!updating,modifier=Modifier.testTag("refresh-cmc")){Text(if(updating)"CMC 갱신 중…" else "CMC 목록 갱신")}
     }
-    Row{FilterChip(selected=!catalogMode,onClick={catalogMode=false;selectedApp=null;search=""},label={Text("설치 후보 ${candidates.size}")});Spacer(Modifier.width(8.dp));FilterChip(selected=catalogMode,onClick={catalogMode=true;search=""},label={Text("CMC 전체 목록")})}
+    Row{FilterChip(selected=!catalogMode,onClick={catalogMode=false;selectedApp=null;search=""},label={Text(if(scanning)"설치 앱 인식 중" else "설치 후보 ${candidates.size}")});Spacer(Modifier.width(8.dp));FilterChip(selected=catalogMode,onClick={catalogMode=true;search=""},label={Text("CMC 전체 목록")})}
     if(message.isNotEmpty())Text(message,style=MaterialTheme.typography.bodySmall)
     if(catalogMode){
      selectedApp?.let{app->Text("${app.label}의 거래소를 직접 선택합니다 · 공식 앱 여부 미확인")}
      OutlinedTextField(search,{search=it.take(160)},label={Text("CMC 거래소 검색")},singleLine=true,modifier=Modifier.fillMaxWidth().testTag("cmc-search"))
      LazyColumn(Modifier.weight(1f)){
       items(filteredEntries,key={it.id}){e->
-       ListItem(headlineContent={Text(e.name)},supportingContent={Text("${cmcStatus(e.status)} · ID ${e.id}")},trailingContent={TextButton(onClick={val app=selectedApp;if(app==null)onRegister(exchange(e)) else onInspect(exchange(e),app)}){Text(if(selectedApp==null)"계정 입력" else "화면 검토")}})
+       ListItem(modifier=Modifier.testTag("cmc-entry-${e.id}"),headlineContent={Text(e.name)},supportingContent={Text("${cmcStatus(e.status)} · ID ${e.id}")},trailingContent={TextButton(onClick={val app=selectedApp;if(app==null)onRegister(exchange(e)) else onInspect(exchange(e),app)}){Text(if(selectedApp==null)"계정 입력" else "화면 검토")}})
        HorizontalDivider()
       }
       if(filteredEntries.isEmpty())item{Text("목록에서 찾지 못했습니다 · CMC 등록 여부는 별도 확인 필요")}
@@ -90,7 +90,7 @@ import kotlinx.coroutines.withContext
         TextButton(onClick={try{val intent=context.packageManager.getLaunchIntentForPackage(candidate.app.packageName)?:error("missing");context.startActivity(intent)}catch(_:Exception){message="앱 실행에 실패했습니다"}},enabled=candidate.app.enabled){Text("앱 열기")}
        }}
       }
-      item{Row{Checkbox(showAllApps,{showAllApps=it},modifier=Modifier.testTag("show-unmatched"));Text("이름이 일치하지 않은 실행 앱도 보기",modifier=Modifier.padding(top=12.dp))}}
+      item{Row{Checkbox(showAllApps,{showAllApps=it},enabled=!scanning,modifier=Modifier.testTag("show-unmatched"));Text("이름이 일치하지 않은 실행 앱도 보기",modifier=Modifier.padding(top=12.dp))}}
       if(showAllApps)items(apps.filter{it.packageName !in matchedPackages},key={"unmatched:"+it.packageName}){app->
        ListItem(headlineContent={Text(app.label)},supportingContent={Text("거래소 미분류 · ${app.packageName}")},trailingContent={TextButton(onClick={selectedApp=app;catalogMode=true;search=""},modifier=Modifier.testTag("assign-exchange-${app.packageName}")){Text("거래소 지정")}})
       }

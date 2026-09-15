@@ -77,7 +77,9 @@ internal fun fetchCmcDirectory(pageSize:Int=5000,transport:(String)->JSONObject=
 fun cmcStatus(status:String)=when(status){"active"->"CMC 활성";"inactive"->"CMC 비활성";"untracked"->"CMC 미추적";else->"CMC 상태 미확인"}
 private val localeAliases=mapOf(
  "binance" to listOf("바이낸스"),"coinbase-exchange" to listOf("coinbase"),"gdax" to listOf("coinbase"),"upbit" to listOf("업비트"),"bithumb" to listOf("빗썸"),"bitget" to listOf("비트겟"),"bybit" to listOf("바이비트"),"okx" to listOf("okex","오케이엑스"),"gate-io" to listOf("gate.io","gate","게이트"),"htx" to listOf("huobi"),"toobit" to listOf("투빗"),"tapbit" to listOf("탭비트"),"ourbit" to listOf("아워비트"),"deepcoin" to listOf("딥코인"),"coinw" to listOf("코인더블유"),"bingx" to listOf("빙엑스"),"crypto-com-exchange" to listOf("crypto.com"),"bitstamp" to listOf("bitstamp"))
-internal fun discoveryWords(s:String)=Normalizer.normalize(s,Normalizer.Form.NFKC).lowercase(Locale.ROOT).replace(Regex("[^\\p{L}\\p{N}]+")," ").trim().replace(Regex("\\s+")," ")
+private val discoverySeparators=Regex("[^\\p{L}\\p{N}]+")
+private val discoverySpaces=Regex("\\s+")
+internal fun discoveryWords(s:String)=Normalizer.normalize(s,Normalizer.Form.NFKC).lowercase(Locale.ROOT).replace(discoverySeparators," ").trim().replace(discoverySpaces," ")
 data class ExchangeAppCandidate(val app:DiagnosticApp,val exchanges:List<CmcExchange>,val basis:String){
  val officialAppVerified:Boolean get()=false
  val kycAuthenticity:String get()="not_verified"

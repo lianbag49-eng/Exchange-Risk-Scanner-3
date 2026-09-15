@@ -25,12 +25,13 @@ class ERSUiTest {
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
   screenshot("home")
   ui.onNodeWithTag("open-exchange-discovery").performClick()
+  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("rescan-installed") and isEnabled()).fetchSemanticsNodes().size==1}
   ui.onNodeWithTag("discovery-catalog-count").assertTextContains("CMC 목록",substring=true)
   ui.onNodeWithTag("discovery-no-identity-claim").assertExists()
   screenshot("exchange-discovery")
   ui.onNodeWithText("CMC 전체 목록").performClick()
   ui.onNodeWithTag("cmc-search").performTextInput("Tapbit")
-  ui.onNodeWithText("Tapbit").assertExists()
+  ui.onNodeWithTag("cmc-entry-1645").assertExists()
   ui.onNodeWithTag("close-discovery").performClick()
   ui.onNodeWithTag("open-account-audit").performClick()
   ui.onNodeWithTag("audit-all").assertIsNotEnabled()
@@ -121,6 +122,7 @@ class ERSUiTest {
  }
  @Test fun unlinkedInstalledAppCanEnterReviewWithoutFabricatingAccountIdentity(){
   ui.onNodeWithTag("open-exchange-discovery").performClick()
+  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("rescan-installed") and isEnabled()).fetchSemanticsNodes().size==1}
   ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("show-unmatched"))
   ui.onNodeWithTag("show-unmatched").performClick()
   ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("assign-exchange-com.android.settings"))
