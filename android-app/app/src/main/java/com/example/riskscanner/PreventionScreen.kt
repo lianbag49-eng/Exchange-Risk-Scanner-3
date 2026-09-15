@@ -55,7 +55,7 @@ class InstalledExchangeState{
 
 fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern("MM.dd HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(value))}.getOrDefault(value)
 
-@Composable fun PreventionHome(installed:InstalledExchangeState,cases:List<PreventionCase>,loading:Boolean,error:String,onRecord:(CmcExchange,DiagnosticApp)->Unit,onInspect:(CmcExchange,DiagnosticApp)->Unit,onCase:(PreventionCase)->Unit,onDiscovery:()->Unit,onAccounts:()->Unit,onReset:()->Unit){
+@Composable fun PreventionHome(installed:InstalledExchangeState,cases:List<PreventionCase>,loading:Boolean,error:String,onRecord:(CmcExchange,DiagnosticApp)->Unit,onInspect:(CmcExchange,DiagnosticApp)->Unit,onCase:(PreventionCase)->Unit,onDiscovery:()->Unit,onAccounts:()->Unit,onReset:()->Unit,exchanges:List<Exchange> = emptyList(),preflight:PreflightState?=null,onAiSettings:()->Unit={}){
  var confirmReset by remember{mutableStateOf(false)}
  LazyColumn(Modifier.fillMaxSize().testTag("prevention-home"),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   item{
@@ -73,14 +73,16 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
    if(installed.error.isNotEmpty())Text(installed.error,color=MaterialTheme.colorScheme.error)
    Row{TextButton(onClick=installed::refresh,enabled=!installed.scanning,modifier=Modifier.testTag("home-rescan")){Text("다시 인식")};TextButton(onClick=onDiscovery){Text("못 찾은 앱 지정")}}
   }}}
+  preflight?.let{state->item{Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){PreflightOverview(state,onAiSettings)}}}}
   if(!installed.scanning&&installed.error.isEmpty()&&installed.candidates.isEmpty())item{Text("일치하는 앱을 찾지 못했습니다. 다른 앱 이름·숨긴 앱·업무 프로필은 자동 인식되지 않을 수 있습니다.",style=MaterialTheme.typography.bodySmall)}
   items(installed.candidates,key={"app:"+it.app.packageName}){candidate->
    Card(Modifier.fillMaxWidth().testTag("home-app-${candidate.app.packageName}")){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-    Text(candidate.app.label,style=MaterialTheme.typography.titleMedium)
+    Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){candidate.exchanges.firstOrNull()?.let{ExchangeBrandLogo(catalogExchange(exchanges,it),44)};Text(candidate.app.label,style=MaterialTheme.typography.titleMedium)}
     Text("버전 ${candidate.app.version} · ${candidate.basis}\n${candidate.app.packageName}",style=MaterialTheme.typography.bodySmall)
     Text("공식 배포 앱 여부 미확인 · 계정 없이 원인 기록 가능",style=MaterialTheme.typography.bodySmall)
+    preflight?.let{state->state.reports.find{it.app.packageName==candidate.app.packageName}?.let{report->PreflightReportView(report,state.ai[report.id])}}
     candidate.exchanges.forEach{exchange->
-     if(candidate.exchanges.size>1)Text("이름 일치 후보: ${exchange.name}")
+     if(candidate.exchanges.size>1)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){ExchangeBrandLogo(catalogExchange(exchanges,exchange),28);Text("이름 일치 후보: ${exchange.name}")}
      Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
       Button(onClick={onRecord(exchange,candidate.app)},enabled=!loading&&error.isEmpty(),modifier=Modifier.testTag("record-${candidate.app.packageName}-${exchange.id}")){Text("원인 기록")}
       OutlinedButton(onClick={onInspect(exchange,candidate.app)},enabled=candidate.app.enabled&&!loading&&error.isEmpty()){Text("오류 화면 AI 검토")}
@@ -98,7 +100,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
   if(error.isEmpty())items(cases,key={"case:"+it.id}){case->
    OutlinedCard(onClick={onCase(case)},modifier=Modifier.fillMaxWidth().testTag("case-${case.id}")){
     Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-     Text(case.exchangeName+case.accountLabel.takeIf{it.isNotEmpty()}.let{if(it==null)"" else " · $it"},style=MaterialTheme.typography.titleMedium)
+     Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){ExchangeBrandLogo(exchanges.find{it.infoUrl==case.exchangeInfoUrl}?:Exchange(case.exchangeName,case.exchangeName.take(2),androidx.compose.ui.graphics.Color(0xFFD9B56D)),32);Text(case.exchangeName+case.accountLabel.takeIf{it.isNotEmpty()}.let{if(it==null)"" else " · $it"},style=MaterialTheme.typography.titleMedium)}
      Text("${preventionNotices[case.noticeType]} · ${preventionOutcomes[case.outcome]}")
      Text("${preventionTime(case.createdAt)} · 조치 ${case.updates.size} · AI 근거 ${case.reviews.size}",style=MaterialTheme.typography.bodySmall)
      if(case.notice.isNotEmpty())Text(case.notice.take(120),maxLines=2)
@@ -124,7 +126,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
  Text("기록 시점의 상태입니다. 이전 발생 시점의 상태나 거래소의 판정 사유를 증명하지 않습니다.",style=MaterialTheme.typography.bodySmall)
 }
 
-@Composable fun PreventionCaseDialog(draft:PreventionCase,existing:Boolean,allCases:List<PreventionCase>,onSave:(PreventionCase)->Unit,onDelete:()->Unit,onInspect:()->Unit,close:()->Unit){
+@Composable fun PreventionCaseDialog(draft:PreventionCase,existing:Boolean,allCases:List<PreventionCase>,onSave:(PreventionCase)->Unit,onDelete:()->Unit,onInspect:()->Unit,exchange:Exchange?=null,close:()->Unit){
  val context=LocalContext.current
  var noticeType by remember(draft.id){mutableStateOf(draft.noticeType)};var notice by remember(draft.id){mutableStateOf(draft.notice)}
  var occurred by remember(draft.id){mutableStateOf(draft.occurredAt)};var account by remember(draft.id){mutableStateOf(draft.accountLabel)}
@@ -134,7 +136,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
   Surface(Modifier.fillMaxSize()){
    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
     Row{Text(if(existing)"원인 조사 이력" else "새 원인 기록",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=close,modifier=Modifier.testTag("close-prevention-case")){Text("닫기")}}
-    Text(draft.exchangeName,style=MaterialTheme.typography.titleLarge)
+    Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){exchange?.let{ExchangeBrandLogo(it,46)};Text(draft.exchangeName,style=MaterialTheme.typography.titleLarge)}
     Text("${draft.app.label} · ${draft.app.version}\n${draft.app.packageName}",style=MaterialTheme.typography.bodySmall)
     Text("로그인 ID 미확인 · 실제 판정 원인 미확정",modifier=Modifier.testTag("case-source-boundary"))
     if(!existing){
