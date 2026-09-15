@@ -30,13 +30,13 @@ class PreventionTest{
  }
  @Test fun firstCompositionFindsAppAndIncidentSurvivesCloseAndEncryptedReload(){
   val name=storageName();val storage=PreventionStorage(context,name);val initial=storage.load();val calls=AtomicInteger()
-  val directory=CmcDirectoryStore(context).load()
+  val directory=CmcDirectoryStore(context).load();val catalog=ExchangeCatalog.load(context)
   var cases by mutableStateOf(initial);var draft by mutableStateOf<PreventionCase?>(null)
   try{
    ui.setContent{
     MaterialTheme(colorScheme=darkColorScheme(primary=Color(0xFFD9B56D),onPrimary=Color(0xFF070A09),background=Color(0xFF070A09),surface=Color(0xFF101815))){Surface{
      val installed=rememberInstalledExchanges(LocalContext.current,Unit,appReader={calls.incrementAndGet();listOf(app)},directoryReader={directory})
-     PreventionHome(installed,cases,false,"",onRecord={e,a->draft=PreventionCase(app=a,exchangeName=e.name,exchangeInfoUrl=e.infoUrl)},onInspect={_,_->},onCase={draft=it},onDiscovery={},onAccounts={},onReset={},exchanges=ExchangeCatalog.load(context))
+     PreventionHome(installed,cases,false,"",onRecord={e,a->draft=PreventionCase(app=a,exchangeName=e.name,exchangeInfoUrl=e.infoUrl)},onInspect={_,_->},onCase={draft=it},onDiscovery={},onAccounts={},onReset={},exchanges=catalog)
      draft?.let{d->val current=cases.find{it.id==d.id}?:d
       PreventionCaseDialog(current,cases.any{it.id==d.id},cases,onSave={next->
        val updated=if(cases.any{it.id==next.id})cases.map{if(it.id==next.id)next else it} else listOf(next)+cases
@@ -45,7 +45,7 @@ class PreventionTest{
      }
     }}
    }
-   ui.waitUntil(15000){ui.onAllNodes(hasTestTag("home-rescan") and isEnabled()).fetchSemanticsNodes().isNotEmpty()}
+   ui.waitUntil(15000){ui.onAllNodes(hasTestTag("home-installed-count") and hasText("설치 후보 1개")).fetchSemanticsNodes().isNotEmpty()}
    assertTrue(calls.get()>=1)
    ui.onNodeWithTag("home-installed-count").assertTextEquals("설치 후보 1개")
    ui.onNodeWithTag("home-identity-boundary").assertExists()
