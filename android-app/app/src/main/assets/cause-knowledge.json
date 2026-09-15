@@ -1,0 +1,665 @@
+{
+  "version": "2026-09-15.1",
+  "reviewedAt": "2026-09-15",
+  "exchanges": [
+    "bybit",
+    "binance",
+    "okx",
+    "other"
+  ],
+  "sources": [
+    {
+      "id": "bybit_errors",
+      "title": "Bybit 공식 API 오류 코드",
+      "url": "https://bybit-exchange.github.io/docs/v5/error"
+    },
+    {
+      "id": "bybit_kyc",
+      "title": "Bybit API 키 정보",
+      "url": "https://bybit-exchange.github.io/docs/v5/user/apikey-info"
+    },
+    {
+      "id": "binance_status",
+      "title": "Binance 공식 계정·API 거래 상태",
+      "url": "https://developers.binance.com/en/docs/catalog/core-trading-wallet/api/rest-api/account"
+    },
+    {
+      "id": "binance_kyc",
+      "title": "Binance KYC·출금 안내",
+      "url": "https://www.binance.com/en/support/faq/detail/f36339596002454a9eb2a2228b2695f7"
+    },
+    {
+      "id": "okx_withdraw",
+      "title": "OKX 출금 제한 안내",
+      "url": "https://www.okx.com/help/why-cant-i-withdraw"
+    },
+    {
+      "id": "android_network",
+      "title": "Android 네트워크 관측 범위",
+      "url": "https://developer.android.com/develop/connectivity/network-ops/reading-network-state"
+    }
+  ],
+  "evidence": {
+    "notice_security_hold": {
+      "label": "보안·심사 제한 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "notice_login_rejected": {
+      "label": "로그인 거절 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "notice_kyc_required": {
+      "label": "KYC 추가 확인 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "notice_withdrawal_restricted": {
+      "label": "출금 제한 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "notice_network_error": {
+      "label": "네트워크 오류 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "notice_region_restricted": {
+      "label": "지역 제한 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "notice_rate_limit": {
+      "label": "요청 한도 안내",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "bybit_10002": {
+      "label": "Bybit 10002 · 요청 시간 범위 오류",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10003": {
+      "label": "Bybit 10003 · API 키·환경 오류",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10005": {
+      "label": "Bybit 10005 · API 권한 오류",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10006": {
+      "label": "Bybit 10006 · API 요청 한도",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10009": {
+      "label": "Bybit 10009 · 지역 서비스 제한",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10010": {
+      "label": "Bybit 10010 · 키 IP 불일치",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10024": {
+      "label": "Bybit 10024 · 컴플라이언스 규칙 발동",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "bybit_10027": {
+      "label": "Bybit 10027 · 거래 금지",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "security_changed": {
+      "label": "발생 전 24시간 안에 비밀번호·인증수단 변경",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "security_unchanged": {
+      "label": "발생 전 24시간 안에 보안 설정 변경 없음",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "kyc_incomplete": {
+      "label": "당시 KYC 미완료·추가 자료 요청 확인",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "kyc_completed": {
+      "label": "당시 KYC 완료 표시 확인",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "deposit_pending": {
+      "label": "당시 출금 해제용 입금 확인 수 부족",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "deposit_complete": {
+      "label": "당시 출금 해제용 입금 확인 수 충족",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "maintenance": {
+      "label": "당시 해당 자산·네트워크 점검 공지 확인",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "no_maintenance": {
+      "label": "당시 해당 자산·네트워크 정상 공지 확인",
+      "origin": "user_report",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": true
+    },
+    "device_offline": {
+      "label": "기기 관측 당시 연결 없음",
+      "origin": "device_observation",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "device_online": {
+      "label": "기기 관측 당시 인터넷 검증됨",
+      "origin": "device_observation",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "manual": false
+    },
+    "api_locked": {
+      "label": "선택 계정 API 거래 잠김 보고",
+      "origin": "exchange_api",
+      "exchanges": [
+        "binance"
+      ],
+      "manual": false
+    },
+    "api_unlocked": {
+      "label": "선택 계정 API 거래 잠김 아님 보고",
+      "origin": "exchange_api",
+      "exchanges": [
+        "binance"
+      ],
+      "manual": false
+    },
+    "api_kyc_followup": {
+      "label": "선택 계정 KYC 기본 단계 보고 · LEVEL_DEFAULT",
+      "origin": "exchange_api",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    },
+    "api_kyc_level": {
+      "label": "선택 계정 KYC 레벨 보고",
+      "origin": "exchange_api",
+      "exchanges": [
+        "bybit"
+      ],
+      "manual": false
+    }
+  },
+  "rules": [
+    {
+      "id": "api_ip",
+      "title": "API 키 IP 설정 불일치",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10010"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "요청 IP와 키에 설정된 허용 IP를 대조",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "api_environment",
+      "title": "API 키·접속 환경 불일치",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10003"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "키를 발급한 환경과 API 도메인 확인",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "api_permission",
+      "title": "API 접근 권한 부족",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10005"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "필요한 읽기 권한과 계정 범위 확인",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "request_time",
+      "title": "서명 요청 시간 불일치",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10002"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "자동 날짜·시간과 요청 수신 시간 범위 확인",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "request_limit",
+      "title": "API 요청 한도 초과",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10006"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "공식 요청 한도와 재시도 간격 확인",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "regional_access",
+      "title": "지역 서비스 이용 제한",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10009"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "공식 고객지원에서 현재 서비스 가능 지역 확인",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "compliance_unspecified",
+      "title": "컴플라이언스 심사 제한 · 세부 사유 미공개",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10024"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "고객지원에 제한 범위·추가 자료·검토 상태 문의",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "trading_unspecified",
+      "title": "거래 제한 · 세부 사유 미공개",
+      "exchanges": [
+        "bybit"
+      ],
+      "groups": [
+        [
+          "bybit_10027"
+        ]
+      ],
+      "counter": [],
+      "sources": [
+        "bybit_errors"
+      ],
+      "meaning": "해당 오류 코드의 공개 설명과 일치하는 후보입니다.",
+      "limit": "오류 문구는 사용자 기록입니다. 이 코드로 KYC 위조·자금세탁·계정 소유자 또는 비공개 심사 사유를 확정할 수 없습니다.",
+      "checks": [
+        "고객지원에서 거래 제한 범위와 해제 조건 확인",
+        "오류 발생 시각과 공식 응답 원문 확인"
+      ]
+    },
+    {
+      "id": "api_trading_lock",
+      "title": "API 거래 잠금",
+      "exchanges": [
+        "binance"
+      ],
+      "groups": [
+        [
+          "api_locked"
+        ]
+      ],
+      "counter": [
+        "api_unlocked"
+      ],
+      "sources": [
+        "binance_status"
+      ],
+      "meaning": "API의 isLocked 상태에 따른 후보입니다.",
+      "limit": "잠금과 실제 발동 원인은 다릅니다. GCR·IFER·UFR 조건 값만으로 발동 원인을 특정하지 않습니다. 조회 시점은 사건 시점과 다를 수 있습니다.",
+      "checks": [
+        "거래소 보고 갱신 시각·복구 예정 확인",
+        "고객지원에서 실제 발동 조건 확인"
+      ]
+    },
+    {
+      "id": "kyc_followup",
+      "title": "KYC 추가 확인·미완료",
+      "exchanges": [
+        "binance",
+        "bybit"
+      ],
+      "groups": [
+        [
+          "notice_kyc_required"
+        ],
+        [
+          "kyc_incomplete"
+        ],
+        [
+          "api_kyc_followup"
+        ]
+      ],
+      "counter": [
+        "kyc_completed",
+        "api_kyc_level"
+      ],
+      "sources": [
+        "binance_kyc",
+        "bybit_kyc"
+      ],
+      "meaning": "추가 확인 안내 또는 API가 보고한 KYC 기본 단계에 대응하는 검토 후보입니다.",
+      "limit": "KYC 레벨·승인 여부는 문서 진위 판정이 아닙니다. 완료 표시가 있어도 재심사 가능성은 남습니다. Bybit API 정보는 상태 범위만 제공합니다.",
+      "checks": [
+        "공식 KYC 페이지의 요청 항목·심사 상태 확인",
+        "사건과 조회 계정의 동일성·시각 확인"
+      ]
+    },
+    {
+      "id": "security_cooldown",
+      "title": "보안 설정 변경 후 출금 대기",
+      "exchanges": [
+        "okx"
+      ],
+      "groups": [
+        [
+          "notice_withdrawal_restricted",
+          "security_changed"
+        ]
+      ],
+      "counter": [
+        "security_unchanged"
+      ],
+      "sources": [
+        "okx_withdraw"
+      ],
+      "meaning": "로그인 비밀번호·인증수단 변경 후 출금 대기 안내와 대조합니다.",
+      "limit": "변경 여부는 사용자 보고입니다. 개인별 실제 대기 종료는 계정 안내에서 확인해야 합니다.",
+      "checks": [
+        "변경 시각과 출금 화면의 대기 종료 시각 대조",
+        "대기 종료 후 상태 기록"
+      ]
+    },
+    {
+      "id": "deposit_confirmation",
+      "title": "입금 확인 수 미충족",
+      "exchanges": [
+        "okx"
+      ],
+      "groups": [
+        [
+          "notice_withdrawal_restricted",
+          "deposit_pending"
+        ]
+      ],
+      "counter": [
+        "deposit_complete"
+      ],
+      "sources": [
+        "okx_withdraw"
+      ],
+      "meaning": "입금 도착과 출금 해제에 필요한 확인 수가 다를 수 있습니다.",
+      "limit": "계정의 실제 확인 수·네트워크는 아직 직접 검증하지 않았습니다.",
+      "checks": [
+        "입금 상세의 출금 해제 확인 수 대조",
+        "요구 확인 수 충족 뒤 상태 기록"
+      ]
+    },
+    {
+      "id": "service_maintenance",
+      "title": "자산·네트워크 점검",
+      "exchanges": [
+        "okx"
+      ],
+      "groups": [
+        [
+          "notice_withdrawal_restricted",
+          "maintenance"
+        ]
+      ],
+      "counter": [
+        "no_maintenance"
+      ],
+      "sources": [
+        "okx_withdraw"
+      ],
+      "meaning": "점검 중에는 해당 출금이 일시 중지될 수 있습니다.",
+      "limit": "공지가 사건의 자산·네트워크·시간에 해당하는지 확인해야 합니다.",
+      "checks": [
+        "공식 상태 공지의 자산·네트워크·점검 시간 대조",
+        "점검 종료 후 재발 여부 기록"
+      ]
+    },
+    {
+      "id": "network_connectivity",
+      "title": "기기 네트워크 연결 문제",
+      "exchanges": [
+        "bybit",
+        "binance",
+        "okx",
+        "other"
+      ],
+      "groups": [
+        [
+          "notice_network_error",
+          "device_offline"
+        ]
+      ],
+      "counter": [
+        "device_online"
+      ],
+      "sources": [
+        "android_network"
+      ],
+      "meaning": "기기 연결 관측과 네트워크 오류 안내를 대조합니다.",
+      "limit": "기기 관측은 수집 당시 상태입니다. 과거 장애·거래소 내부 차단·앱 서버 도달 여부를 증명하지 않습니다.",
+      "checks": [
+        "오류 발생 시각과 기기 관측 시각 대조",
+        "정상 연결에서 같은 오류가 지속되는지 확인"
+      ]
+    }
+  ]
+}

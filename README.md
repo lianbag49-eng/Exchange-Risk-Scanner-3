@@ -93,3 +93,18 @@ Android의 AI KYC 검토와 거래소 앱 AI 진단에 `https://ers-ai-review.on
 BELTRIX wallet and trading code, dependencies, tests and deployment are maintained in [lianbag49-eng/beltrix](https://github.com/lianbag49-eng/beltrix). Open [BELTRIX](https://lianbag49-eng.github.io/beltrix/).
 
 This repository maintains ERS. The `legacy-beltrix/` directory only keeps old website links working. Previous BELTRIX source remains available in Git history at `7d939155e93dad6512c05ff79f24fb3c53dfc1b2`.
+
+
+## ERS 1.17 — evidence-based cause hypotheses
+
+The incident screen now offers **공식 기준 원인 분석 · 사후 대조**. It works without screenshots using bounded incident observations and, optionally, a user-selected fresh read-only account result. The catalog covers 14 hypotheses from published Bybit errors/API KYC fields, Binance account status/KYC guidance, OKX withdrawal guidance and Android network observations. Other exchanges receive only applicable device checks; absent evidence remains unknown. This is partial documented coverage, not a reproduction of private exchange review systems.
+
+`kyc-service/cause-knowledge.json` and the identical Android asset contain reviewed source URLs, review date, applicability rules, supporting/counter evidence, limits and next checks. Last reviewed: 2026-09-15; version `2026-09-15.1`. Catalog changes require updating both files and shipping a compatible app; the server rejects version mismatches. Public documents are not fetched during each analysis.
+
+`POST /v1/causes` requires the existing ERS bearer token, an independent explicit consent, request UUID, case UUID, exchange code, knowledge version and bounded evidence codes/origins/timestamps. No raw notice, screenshot, UID, API credentials, prior AI guesses or follow-up notes are sent. API provenance is reported by the client and is not re-attested by the server. Account selection must be confirmed by the user; queries older than five minutes or mismatched UIDs are rejected. Current observations do not establish past incident conditions.
+
+The server derives eligible hypotheses and retains counter evidence deterministically. The external model can rank up to three eligible IDs using strict structured output; it cannot generate arbitrary claims, verdicts, probabilities or new source links. Supporting evidence, limitations and prevention checks come from the versioned catalog. No eligible rule means `insufficient_evidence` and no external inference. Existing rate limits, replay checks, request timeouts and no-store responses apply. Existing OPENAI_API_KEY, OPENAI_MODEL and ERS token configuration is reused. No new provider credentials are required for this endpoint.
+
+Hypothesis snapshots and append-only follow-up notes are encrypted with the incident records. The comparison uses the first prediction made before any follow-up, then the most recent user-reviewed follow-up classification. Later predictions are excluded from retrospective prediction comparisons. Direct observations and unknown reasons are excluded from official-reason comparisons. Support/notice records remain user transcriptions, not exchange-certified truth. No accuracy percentages, automatic training labels, background uploads or server-side incident retention are added. Older records remain readable.
+
+Examples of source boundaries: Bybit 10009 means regional service restriction, 10010 key IP mismatch, 10024 unspecified compliance rules, and 10027 unspecified transaction restriction. Generic HTTP 403 cannot identify one reason. Binance `isLocked` describes API trading status; GCR/IFER/UFR values do not identify the actual trigger. KYC status or provider approval does not by itself authenticate identity documents or bind a phone app session.
