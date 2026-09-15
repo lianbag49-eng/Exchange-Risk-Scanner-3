@@ -33,3 +33,5 @@ body[data-page=wallet] #walletProvider,body[data-page=explore] #walletProvider,b
 .w-pills button.active{background:var(--accent);border-color:var(--accent)}
 .bottom-nav{background:#10100fef;border-top-color:#3b3225}.bottom-nav .dex-circle{border-color:#10100f}
 .logo{background:linear-gradient(145deg,#2d2417,#121211);border-color:#957443}.brand b{color:#efd49f}
+
+.logo img{width:72%;height:82%;object-fit:contain;display:block}.w-pixel-mark img{width:100%;height:100%;object-fit:contain;display:block}.w-pixel-mark{filter:drop-shadow(0 0 12px #e6be7220)}

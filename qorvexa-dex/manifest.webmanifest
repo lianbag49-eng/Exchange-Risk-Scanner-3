@@ -8,10 +8,16 @@
   "description": "BELTRIX decentralized exchange testnet prototype",
   "icons": [
     {
-      "src": "./icon.svg",
+      "src": "./beltrix-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon.svg?v=beltrix",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

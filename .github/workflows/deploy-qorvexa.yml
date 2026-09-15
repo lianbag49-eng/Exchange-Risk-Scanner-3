@@ -48,7 +48,7 @@ jobs:
       - name: Prepare web-only artifact
         run: |
           mkdir -p public/qorvexa-dex
-          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/trading.bundle.js qorvexa-dex/wallet.bundle.js qorvexa-dex/wallet.css qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
+          cp qorvexa-dex/index.html qorvexa-dex/app.js qorvexa-dex/market.js qorvexa-dex/trading.bundle.js qorvexa-dex/wallet.bundle.js qorvexa-dex/wallet.css qorvexa-dex/sw.js qorvexa-dex/icon.svg qorvexa-dex/beltrix-symbol.svg qorvexa-dex/beltrix-icon.png qorvexa-dex/manifest.webmanifest public/qorvexa-dex/
       - uses: actions/configure-pages@v5
         if: github.ref == 'refs/heads/main'
         with:
