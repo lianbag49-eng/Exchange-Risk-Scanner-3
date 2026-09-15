@@ -7,7 +7,7 @@ services:
     dockerfilePath: ./kyc-service/Dockerfile
     dockerContext: ./kyc-service
     healthCheckPath: /healthz
-    autoDeployTrigger: off
+    autoDeployTrigger: "off"
     envVars:
       - key: OPENAI_API_KEY
         sync: false

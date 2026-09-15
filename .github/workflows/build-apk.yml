@@ -75,6 +75,22 @@ jobs:
             android-app/app/build/reports/androidTests
             android-app/app/build/reports/tests
 
+      - name: Show synthetic diagnostic screen for review
+        if: always()
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path
+          import base64, io
+          from PIL import Image
+          p=Path('android-app/screenshots/app-diagnostic-start.png')
+          if p.exists():
+              im=Image.open(p).convert('RGB')
+              im.thumbnail((420,920))
+              out=io.BytesIO()
+              im.save(out,format='JPEG',quality=78)
+              print('ERS_DIAGNOSTIC_PREVIEW:'+base64.b64encode(out.getvalue()).decode())
+          PYCODE
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

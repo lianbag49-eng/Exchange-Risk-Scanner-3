@@ -41,10 +41,37 @@ class ERSUiTest {
   ui.onNodeWithText("닫기",useUnmergedTree=true).performClick()
   ui.onNodeWithTag("open-app-diagnostic").performScrollTo().performClick()
   ui.onNodeWithTag("diagnostic-app-search").assertExists()
+  screenshot("app-diagnostic-start")
   ui.onNodeWithTag("diagnostic-capture").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
   ui.onNodeWithTag("diagnostic-check-connection").performScrollTo().assertIsNotEnabled()
   screenshot("app-diagnostic")
+  // Exercise Android's real consent UI against the emulator's Settings app only.
+  // No exchange credentials, real user screenshots or external AI requests are involved.
+  ui.onNodeWithTag("diagnostic-app-search").performScrollTo().performTextInput("com.android.settings")
+  val settingsApp=diagnosticApps(ui.activity).first{it.packageName=="com.android.settings"}
+  ui.onNodeWithText("${settingsApp.label} · ${settingsApp.version}\n${settingsApp.packageName}").performScrollTo().performClick()
+  val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
+  if(android.os.Build.VERSION.SDK_INT>=33)automation.grantRuntimePermission(ui.activity.packageName,android.Manifest.permission.POST_NOTIFICATIONS)
+  ui.onNodeWithTag("diagnostic-capture").performScrollTo().performClick()
+  fun systemClick(text:String):Boolean {
+   val nodes=automation.rootInActiveWindow?.findAccessibilityNodeInfosByText(text).orEmpty()
+   for(node in nodes){var n:android.view.accessibility.AccessibilityNodeInfo?=node;repeat(4){if(n?.isClickable==true)return n!!.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);n=n?.parent}}
+   return false
+  }
+  ui.waitUntil(10000){automation.rootInActiveWindow?.findAccessibilityNodeInfosByText("A single app")?.isNotEmpty()==true||automation.rootInActiveWindow?.findAccessibilityNodeInfosByText("Start now")?.isNotEmpty()==true}
+  if(systemClick("A single app")){ui.waitUntil(5000){systemClick("Entire screen")}}
+  ui.waitUntil(5000){systemClick("Start now")}
+  ui.waitUntil(10000){DiagnosticCaptureBus.state.value.active&&DiagnosticCaptureBus.state.value.message.contains("거래소 오류 화면")}
+  val nm=ui.activity.getSystemService(android.app.NotificationManager::class.java)
+  ui.waitUntil(5000){nm.activeNotifications.any{it.id==81}}
+  // The same explicit pending action that the user taps in the foreground notification.
+  nm.activeNotifications.first{it.id==81}.notification.actions.first().actionIntent.send()
+  ui.waitUntil(10000){!DiagnosticCaptureBus.state.value.active}
+  ui.runOnUiThread{ui.activity.startActivity(android.content.Intent(ui.activity,MainActivity::class.java).addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))}
+  ui.onNodeWithTag("diagnostic-image-preview").performScrollTo().assertExists()
+  ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
+  screenshot("app-diagnostic-captured")
   ui.onNodeWithTag("close-app-diagnostic").performScrollTo().performClick()
   ui.onNodeWithContentDescription("결과 닫기").performClick()
   ui.onNodeWithTag("nav-0").performClick()
