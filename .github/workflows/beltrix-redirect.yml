@@ -1,0 +1,53 @@
+name: Maintain former BELTRIX links
+on:
+  push:
+    branches: [main]
+    paths: ['legacy-beltrix/**','.github/workflows/beltrix-redirect.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: ers-legacy-pages
+  cancel-in-progress: true
+jobs:
+  redirect:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}beltrix/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare legacy redirects
+        run: |
+          mkdir -p public/beltrix public/qorvexa-dex
+          cp legacy-beltrix/index.html legacy-beltrix/sw.js public/beltrix/
+          cp legacy-beltrix/index.html legacy-beltrix/sw.js public/qorvexa-dex/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy old-link redirects
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Verify both published redirects
+        run: |
+          python3 - <<'PY'
+          from urllib.request import urlopen
+          from time import sleep
+          base = 'https://lianbag49-eng.github.io/Exchange-Risk-Scanner-3/'
+          for path in ['beltrix/', 'qorvexa-dex/']:
+            for attempt in range(4):
+              try:
+                with urlopen(base + path, timeout=15) as response:
+                  html = response.read().decode()
+                  assert response.status == 200
+                  assert 'https://lianbag49-eng.github.io/beltrix/' in html
+                  assert 'location.search+location.hash' in html
+                print('Verified old-link redirect:', base + path)
+                break
+              except Exception:
+                if attempt == 3: raise
+                sleep(5)
+          PY
