@@ -45,11 +45,11 @@ class AutoPreflightConfigStore(context:Context,private val name:String="ers_auto
  fun load():AutoPreflightConfig{
   val text=prefs.getString("encrypted",null)?:return AutoPreflightConfig();val blob=Base64.decode(text,Base64.NO_WRAP);require(blob.size in 29..16384)
   val cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.DECRYPT_MODE,key(false),GCMParameterSpec(128,blob.copyOfRange(0,12)));val plain=cipher.doFinal(blob.copyOfRange(12,blob.size))
-  try{val j=JSONObject(String(plain,Charsets.UTF_8));require(j.getInt("version")==1&&j.getBoolean("consent"));val c=AutoPreflightConfig(j.getString("endpoint"),j.getString("token"),true);kycEndpoint(c.endpoint);require(c.token.length in 32..4096);return c}finally{plain.fill(0)}
+  try{val j=JSONObject(String(plain,Charsets.UTF_8));require(j.getInt("version")==1&&j.getBoolean("consent"));val c=AutoPreflightConfig(j.getString("endpoint"),j.getString("token"),j.optInt("scopeVersion",1)>=2);kycEndpoint(c.endpoint);require(c.token.length in 32..4096);return c}finally{plain.fill(0)}
  }
  fun save(config:AutoPreflightConfig){
   require(config.enabled);kycEndpoint(config.endpoint);require(config.token.length in 32..4096)
-  val plain=JSONObject().put("version",1).put("consent",true).put("endpoint",config.endpoint).put("token",config.token).toString().toByteArray(Charsets.UTF_8)
+  val plain=JSONObject().put("version",1).put("scopeVersion",2).put("consent",true).put("endpoint",config.endpoint).put("token",config.token).toString().toByteArray(Charsets.UTF_8)
   try{val cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key(true));check(prefs.edit().putString("encrypted",Base64.encodeToString(cipher.iv+cipher.doFinal(plain),Base64.NO_WRAP)).commit())}finally{plain.fill(0)}
  }
  fun clear(){check(prefs.edit().remove("encrypted").commit())}
@@ -105,7 +105,7 @@ class PreflightState{
     if(retained.size!=state.ai.size){state.ai=retained;state.aiMessage="관측 신호가 변경됨 · 다음 자동 AI 검토 대기"}
     val config=try{withContext(Dispatchers.IO){AutoPreflightConfigStore(context).load()}}catch(_:Exception){state.aiMessage="AI 설정 복구 실패 · 자동 전송 중단. AI 연결에서 다시 설정하세요";null}
     if(config!=null){
-     if(!config.enabled){state.ai=emptyMap();state.aiMessage="AI 자동 검토 연결 대기 · 로컬 점검 완료"}
+     if(!config.enabled){state.ai=emptyMap();state.aiMessage=if(config.token.isNotEmpty())"계정 제한 코드가 추가됨 · AI 자동 연결에서 전송 범위를 확인하고 다시 켜세요" else "AI 자동 검토 연결 대기 · 로컬 점검 완료"}
      else if(state.reports.isEmpty()){state.ai=emptyMap();state.aiMessage="AI 검토할 거래소 앱 후보 없음"}
      else if(configRevision!=state.lastConfigRevision||System.currentTimeMillis()-state.lastAiAttempt !in 0..299999){
       state.lastAiAttempt=System.currentTimeMillis();state.lastConfigRevision=configRevision;state.ai=emptyMap()
@@ -152,7 +152,7 @@ class PreflightState{
   Text("설치 처리 앱: ${report.installer} · 공식성 인증 아님",style=MaterialTheme.typography.bodySmall)
   Text(report.accountSummary,style=MaterialTheme.typography.bodySmall)
   Text("미확인: "+report.unknowns.joinToString(" · "){preflightUnknowns[it].orEmpty()},style=MaterialTheme.typography.bodySmall)
-  Text("ERS 분류 기준: 디버깅 허용 앱은 높음, 잠금·디버깅·패치·연결·시간·KYC 후속 확인과 미해결 사용자 사건은 주의. 정보 부족은 미확인으로 남깁니다. VPN·프록시만으로 높이지 않습니다.",style=MaterialTheme.typography.bodySmall)
+  Text("ERS 분류 기준: 디버깅 허용 앱은 높음, 잠금·디버깅·패치·연결·시간·KYC 후속 확인·API가 보고한 제한과 미해결 사용자 사건은 주의. 정보 부족은 미확인으로 남깁니다. VPN·프록시만으로 높이지 않습니다.",style=MaterialTheme.typography.bodySmall)
  }
 }
 
@@ -167,7 +167,7 @@ class PreflightState{
    Text("사진 없이 앱·기기 상태를 먼저 점검하고 AI가 확인 순서와 다음 조치를 제안합니다. 로컬 점검은 연결 없이도 동작합니다.")
    OutlinedTextField(endpoint,{endpoint=it;consent=false},label={Text("HTTPS 검토 서버 주소")},enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("preflight-endpoint"))
    OutlinedTextField(token,{token=it;consent=false},label={Text("서버 접속 토큰")},singleLine=true,visualTransformation=PasswordVisualTransformation(),enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("preflight-token"))
-   Text("자동 검토를 켜면 실행·복귀 시와 화면 활성 중 5분마다 점검합니다. 5분 이내의 추가 AI 요청은 제한합니다. 화면·UID·계정 별칭·API 키·개인 메모는 전송하지 않습니다. 앱 패키지의 해시 식별자, 관측된 신호 코드, 미확인 항목 코드만 검토 서버와 OpenAI에 전달합니다. 연결 계정의 KYC 후속 확인 여부와 미해결 사건 존재 여부도 신호 코드에 포함됩니다.",style=MaterialTheme.typography.bodySmall)
+   Text("자동 검토를 켜면 실행·복귀 시와 화면 활성 중 5분마다 점검합니다. 5분 이내의 추가 AI 요청은 제한합니다. 화면·UID·계정 별칭·API 키·개인 메모는 전송하지 않습니다. 앱 패키지의 해시 식별자, 관측된 신호 코드, 미확인 항목 코드만 검토 서버와 OpenAI에 전달합니다. 연결 계정의 KYC 후속 확인·제한 또는 비허용 상태 여부와 미해결 사건 존재 여부도 신호 코드에 포함됩니다.",style=MaterialTheme.typography.bodySmall)
    Text("서버 접속 토큰은 Android 보안 키로 암호화해 저장하며, OpenAI API 키는 서버에만 둡니다. 자동 검토에는 API 사용료가 발생할 수 있습니다.",style=MaterialTheme.typography.bodySmall)
    Row{Checkbox(consent,{consent=it},enabled=!busy,modifier=Modifier.testTag("preflight-consent"));Text("위 범위의 자동 AI 전송과 서버 토큰 저장에 동의합니다.")}
    OutlinedButton(onClick={busy=true;message="가상 신호로 연결·AI 응답 확인 중…";scope.launch{try{

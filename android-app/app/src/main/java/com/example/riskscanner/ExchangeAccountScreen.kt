@@ -68,7 +68,7 @@ import kotlinx.coroutines.withContext
    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(18.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
     Row{Text("계정 연결 · 전체 점검",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=close,modifier=Modifier.testTag("close-account-audit")){Text("닫기")}}
     Text("공식 계정 조회와 화면 근거 검토를 구분합니다. 앱 설치 여부만으로 로그인된 아이디나 KYC 승인을 알 수는 없습니다.")
-    Text("현재 공식 조회: Bybit 개인 읽기 API · Toobit 제휴 API. 다른 거래소는 계정 연동 지원 확인이 필요합니다.",style=MaterialTheme.typography.bodySmall)
+    Text("현재 공식 조회: Binance 계정·거래 제한 · Bybit 개인 읽기 API · Toobit 제휴 API. 다른 거래소는 계정 연동 지원 확인이 필요합니다.",style=MaterialTheme.typography.bodySmall)
     if(storageError.isNotEmpty())Text(storageError,color=MaterialTheme.colorScheme.error)
     Row{Button(onClick={runAll()},enabled=!busy&&readable&&accounts.isNotEmpty(),modifier=Modifier.weight(1f).testTag("audit-all")){Text("연결 계정 전체 점검")};if(busy)TextButton(onClick={job?.cancel()}){Text("중단")}}
     Row{Checkbox(automatic,{automatic=it;prefs.edit().putBoolean("automatic",it).apply()},enabled=readable);Text("이 화면이 활성화된 동안 5분마다 자동 점검",modifier=Modifier.padding(top=10.dp))}
@@ -77,9 +77,10 @@ import kotlinx.coroutines.withContext
     if(adding){
      AccountProvider.values().forEach{p->Row{RadioButton(provider==p,{provider=p;apiKey="";secret="";targetUid="";permitted=false},enabled=!busy);TextButton(onClick={provider=p;apiKey="";secret="";targetUid="";permitted=false},enabled=!busy){Text(p.title)}}}
      if(provider==AccountProvider.TOOBIT_AFFILIATE)Text("Toobit 제휴 권한으로 조회할 수 있는 초대 계정만 지원합니다. 일반 개인 API 키로는 KYC를 조회할 수 없습니다.")
-     else Text("Bybit Global의 시스템 생성 HMAC 읽기 전용 키를 사용합니다. API가 반환한 UID로 연결하며 휴대폰 앱의 로그인 계정과 자동으로 동일시하지 않습니다.")
+     else if(provider==AccountProvider.BYBIT)Text("Bybit Global의 시스템 생성 HMAC 읽기 전용 키를 사용합니다. API가 반환한 UID로 연결하며 휴대폰 앱의 로그인 계정과 자동으로 동일시하지 않습니다.")
+     else Text("Binance Global의 HMAC 읽기 전용 키로 UID·계정 상태·API 거래 잠금을 조회합니다. 거래·출금·이체 권한은 모두 꺼야 합니다. 이 API는 KYC 심사 상세나 문서 진위를 제공하지 않습니다.")
      OutlinedTextField(alias,{alias=it.take(60)},label={Text("계정 이름")},singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth())
-     OutlinedTextField(targetUid,{targetUid=it.take(32)},label={Text(if(provider==AccountProvider.BYBIT)"확인할 UID · 비워두면 API에서 조회" else "조회할 초대 계정 UID")},singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth())
+     OutlinedTextField(targetUid,{targetUid=it.take(32)},label={Text(if(provider!=AccountProvider.TOOBIT_AFFILIATE)"확인할 UID · 비워두면 API에서 조회" else "조회할 초대 계정 UID")},singleLine=true,enabled=!busy,modifier=Modifier.fillMaxWidth())
      OutlinedTextField(apiKey,{apiKey=it.trim();permitted=false},label={Text("API Key")},singleLine=true,visualTransformation=PasswordVisualTransformation(),enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("account-api-key"))
      OutlinedTextField(secret,{secret=it.trim();permitted=false},label={Text("API Secret")},singleLine=true,visualTransformation=PasswordVisualTransformation(),enabled=!busy,modifier=Modifier.fillMaxWidth().testTag("account-api-secret"))
      Text("키는 이 휴대폰에서 Android 보안 키로 암호화해 보관하고, 선택한 거래소 공식 API에 직접 서명 요청을 보냅니다. 키·API 응답을 AI 서버로 보내지 않습니다. 연결 해제로 저장된 키를 제거할 수 있습니다.",style=MaterialTheme.typography.bodySmall)
@@ -91,7 +92,7 @@ import kotlinx.coroutines.withContext
        if(accounts.any{it.provider==candidate.provider&&it.uid==report.uid}){message="이미 연결된 계정입니다"}
        else if(persist(accounts+candidate.copy(uid=report.uid,status=report,lastAttempt=System.currentTimeMillis()))){adding=false;apiKey="";secret="";alias="";targetUid="";permitted=false;message="공식 계정 연결 완료 · ${apiKycLabel(report)}"}
       }catch(e:CancellationException){throw e}catch(e:Exception){message=if(e is AccountAuditError)e.message.orEmpty() else "계정 연결 실패 · 입력값을 확인하세요"}finally{busy=false}}
-     },enabled=!busy&&permitted&&alias.isNotBlank()&&apiKey.length>=8&&secret.length>=8&&(provider==AccountProvider.BYBIT||validExchangeUid(targetUid)),modifier=Modifier.fillMaxWidth().testTag("connect-api-account")){Text("계정 확인 후 연결 저장")}
+     },enabled=!busy&&permitted&&alias.isNotBlank()&&apiKey.length>=8&&secret.length>=8&&(provider!=AccountProvider.TOOBIT_AFFILIATE||validExchangeUid(targetUid)),modifier=Modifier.fillMaxWidth().testTag("connect-api-account")){Text("계정 확인 후 연결 저장")}
      TextButton(onClick={context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(provider.docs)))}){Text("공식 조회 API 문서")}
     }
     HorizontalDivider();Text("연결된 계정 ${accounts.size}개",style=MaterialTheme.typography.titleMedium)
@@ -107,9 +108,10 @@ import kotlinx.coroutines.withContext
        if(s.region.isNotEmpty())Text("API KYC 지역: ${s.region}")
        if(s.scope=="subaccount_api")Text("서브계정 API 응답 · KYC 적용 대상은 거래소 확인 필요")
        Text("조회 시각: "+SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.KOREA).format(Date(s.checkedAt)))
+       s.restrictions?.let{RestrictionsView(it)}
        Text(if(s.permissionCheck=="verified_read_only")"읽기 전용 키 확인됨" else "읽기 전용 키: 사용자 확인 · API에서 권한 상세 미제공",style=MaterialTheme.typography.bodySmall)
       }
-      Text("신분증 진위·현재 앱 로그인·계정 제한 사유는 이 API 응답으로 확인하지 않습니다.",style=MaterialTheme.typography.bodySmall)
+      Text("신분증 진위·현재 앱 로그인과의 일치·미제공된 내부 심사 사유는 미확인입니다.",style=MaterialTheme.typography.bodySmall)
       TextButton(onClick={persist(accounts.filter{it.id!=a.id})},enabled=!busy){Text("연결 해제 · 저장 키 삭제")}
      }}
     }
