@@ -50,7 +50,7 @@ private val Amber=Color(0xFFF4B64D)
 private val Red=Color(0xFFFF6D75)
 
 data class Exchange(val name:String,val mark:String,val color:Color,val logo:String?=null,val rank:Int=0,val infoUrl:String="")
-data class Record(val exchange:Exchange,val name:String,val uid:String,val country:String,val result:RiskResult,val snapshot:DeviceSnapshot,val time:String,val worker:String="",val kycReviews:List<KycReview> = emptyList())
+data class Record(val exchange:Exchange,val name:String,val uid:String,val country:String,val result:RiskResult,val snapshot:DeviceSnapshot,val time:String,val worker:String="",val kycReviews:List<KycReview> = emptyList(),val diagnostics:List<AppDiagnosticReport> = emptyList())
 
 class MainActivity:ComponentActivity(){
  private val exchanges by lazy{ExchangeCatalog.load(this)}
@@ -102,6 +102,10 @@ class MainActivity:ComponentActivity(){
   }
   detail?.let{r->ReportDialog(r,persisted=records.contains(r),onReview={review->
    val updated=r.copy(kycReviews=(listOf(review)+r.kycReviews).take(10));detail=updated
+   if(latest==r)latest=updated
+   val index=records.indexOf(r);if(index>=0){records[index]=updated;persist(records)}
+  },onDiagnostic={review->
+   val updated=r.copy(diagnostics=(listOf(review)+r.diagnostics).take(5));detail=updated
    if(latest==r)latest=updated
    val index=records.indexOf(r);if(index>=0){records[index]=updated;persist(records)}
   },close={detail=null})}
@@ -213,15 +217,17 @@ class MainActivity:ComponentActivity(){
    Label("SCAN PREFERENCES")
    Panel(){Setting("프라이버시 모드","화면 캡처 및 최근 앱 미리보기 차단",privacy,setPrivacy);Setting("기록 암호화 저장","기기에 암호화하여 최대 200개 보관",save,setSave);Setting("강화 분석 모드","민감한 보안 기준으로 표시",strict,setStrict);Setting("보안 도움말 표시","결과에 권장 조치 안내",tips,setTips)}
    Label("APP INFORMATION")
-   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.9");Info("Engine","ERS Device Guard");Info("Data Mode","기기 점검 + 선택적 AI 검토");Info("Exchange catalog","52 · Offline logos")}
+   Panel(){Info("Application","Exchange Risk Scanner");Info("Version","1.10");Info("Engine","ERS Device Guard");Info("Data Mode","기기 점검 + 선택적 AI 검토");Info("Exchange catalog","52 · Offline logos")}
    Panel(){TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS))}){Text("기기 보안 설정 열기")};TextButton(onClick={startActivity(Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS))}){Text("네트워크 설정 열기")}}
    Label("PRIVACY & SECURITY")
-   Note("기기 스캔은 로컬에서 처리합니다. AI KYC 검토는 전송 동의 후에만 선택 이미지와 거래소·UID·국가를 지정 서버로 전송합니다.",Green)
+   Note("기기 스캔은 로컬에서 처리합니다. 동의한 AI KYC 검토는 이미지·거래소·UID·국가를, 앱 AI 진단은 가린 이미지·선택 앱·기기 상태를 지정 서버로 전송합니다. 서버는 이미지를 외부 AI로 전달합니다.",Green)
   }
  }
 
- @Composable private fun ReportDialog(r:Record,persisted:Boolean,onReview:(KycReview)->Unit,close:()->Unit){
+ @Composable private fun ReportDialog(r:Record,persisted:Boolean,onReview:(KycReview)->Unit,onDiagnostic:(AppDiagnosticReport)->Unit,close:()->Unit){
   var showAi by remember{mutableStateOf(false)}
+  var showDiagnostic by remember{mutableStateOf(false)}
+  if(showDiagnostic)AppDiagnosticDialog(r,persisted,{onDiagnostic(it);showDiagnostic=false}){showDiagnostic=false}
   if(showAi)KycReviewDialog(r,persisted,{onReview(it);showAi=false}){showAi=false}
   val c=levelColor(r.result.level)
   androidx.compose.ui.window.Dialog(onDismissRequest=close,properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)){
@@ -232,6 +238,8 @@ class MainActivity:ComponentActivity(){
      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center){Pill(r.result.level+" RISK · "+r.result.score,c)}
      Text("기기·입력 정보 기준 · 실제 계정 상태는 미검증",color=c,fontSize=12.sp,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth())
      OutlinedButton(onClick={showAi=true},modifier=Modifier.fillMaxWidth().testTag("open-kyc-review")){Text("AI KYC 검토 · 증빙 이미지")}
+     OutlinedButton(onClick={showDiagnostic=true},modifier=Modifier.fillMaxWidth().testTag("open-app-diagnostic")){Text("거래소 앱 AI 진단 · 오류 화면")}
+     r.diagnostics.forEach{review->Panel(){AppDiagnosticSummary(review)}}
      r.kycReviews.firstOrNull()?.let{review->Panel(){KycReviewSummary(review)}}
      Panel(){Info("점검 시간",r.time);Info("입력 KYC 국가",r.country);Info("작업자",r.worker.ifBlank{"미지정"});Info("접속 국가 / IP","미확인");Info("기기 정보",r.snapshot.deviceModel.ifBlank{r.snapshot.networkType})}
      Panel(){r.result.signals.forEach{Signal(it);HorizontalDivider(color=Line.copy(.4f))}}

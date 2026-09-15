@@ -3,11 +3,12 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc" ]
+    branches: [ "main", "codex/ers-hyperliquid", "codex/ers-ai-kyc", "codex/ers-app-diagnostics" ]
     paths:
       - "android-app/**"
       - ".github/workflows/build-apk.yml"
       - "kyc-service/**"
+      - "render.yaml"
 
 jobs:
   build:
@@ -59,7 +60,7 @@ jobs:
       - name: Verify screens and offline logos
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 35
           arch: x86_64
           disable-animations: true
           script: bash android-app/scripts/verify-ui.sh
@@ -73,6 +74,23 @@ jobs:
             android-app/screenshots
             android-app/app/build/reports/androidTests
             android-app/app/build/reports/tests
+
+      - name: Show synthetic diagnostic screen for review
+        if: always()
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path
+          import base64
+          for name in ['app-diagnostic-start','app-diagnostic-captured','capture-test-failure']:
+              p=Path('android-app/screenshots/'+name+'.png')
+              if p.exists():
+                  print('ERS_PREVIEW_'+name+':'+base64.b64encode(p.read_bytes()).decode())
+          for p in Path('android-app/app/build/outputs/androidTest-results').rglob('*.xml'):
+              import xml.etree.ElementTree as ET
+              for failure in ET.parse(p).iter('failure'):
+                  print('ERS_TEST_FAILURE:'+failure.attrib.get('message',''))
+                  print((failure.text or '')[:5000])
+          PYCODE
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
