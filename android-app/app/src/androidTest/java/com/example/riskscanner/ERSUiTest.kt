@@ -7,10 +7,15 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
 import org.junit.Assert.*
 import java.io.File
 class ERSUiTest {
  @get:Rule val ui=createAndroidComposeRule<MainActivity>()
+ @Before fun keepLegacyJourneysOffline(){
+  ui.waitForIdle()
+  if(ui.onAllNodesWithText("기기 점검만").fetchSemanticsNodes().isNotEmpty())ui.onNodeWithText("기기 점검만").performClick()
+ }
  private fun screenshot(name:String){
   ui.waitForIdle()
   InstrumentationRegistry.getInstrumentation().waitForIdleSync()
@@ -23,6 +28,7 @@ class ERSUiTest {
  @Test fun offlineLogosAndAccountJourney(){
   val catalog=ExchangeCatalog.load(ui.activity);assertTrue(catalog.size>=2449);assertEquals((1..50).toList(),catalog.take(50).map{it.rank})
   catalog.filter{it.logo!=null}.forEach{val b=Base64.decode(it.logo,Base64.DEFAULT);assertNotNull(BitmapFactory.decodeByteArray(b,0,b.size))}
+  ui.onNodeWithTag("prevention-home").performScrollToNode(hasTestTag("home-rescan"))
   ui.waitUntil(15000){ui.onAllNodes(hasTestTag("home-rescan") and isEnabled()).fetchSemanticsNodes().size==1}
   ui.onNodeWithTag("prevention-home").assertExists()
   screenshot("home")

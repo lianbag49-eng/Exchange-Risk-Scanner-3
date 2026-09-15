@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class InstalledExchangeState{
+ var directory by mutableStateOf<List<CmcExchange>>(emptyList());private set
  var candidates by mutableStateOf<List<ExchangeAppCandidate>>(emptyList());private set
  var scanning by mutableStateOf(true);private set
  var error by mutableStateOf("");private set
@@ -34,8 +35,8 @@ class InstalledExchangeState{
  suspend fun scan(apps:()->List<DiagnosticApp>,directory:()->CmcDirectory){
   scanning=true;error=""
   try{
-   val found=withContext(Dispatchers.IO){recognizeExchangeApps(apps(),directory())}
-   candidates=found;checkedAt=Instant.now().toString()
+   val result=withContext(Dispatchers.IO){val catalog=directory();catalog.entries to recognizeExchangeApps(apps(),catalog)}
+   this.directory=result.first;candidates=result.second;checkedAt=Instant.now().toString()
   }catch(e:CancellationException){throw e}catch(_:Exception){error="앱 인식 실패 · 마지막 조회 목록을 유지합니다. 다시 인식해 주세요"}finally{scanning=false}
  }
 }
@@ -55,13 +56,14 @@ class InstalledExchangeState{
 
 fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern("MM.dd HH:mm").withZone(ZoneId.systemDefault()).format(Instant.parse(value))}.getOrDefault(value)
 
-@Composable fun PreventionHome(installed:InstalledExchangeState,cases:List<PreventionCase>,loading:Boolean,error:String,onRecord:(CmcExchange,DiagnosticApp)->Unit,onInspect:(CmcExchange,DiagnosticApp)->Unit,onCase:(PreventionCase)->Unit,onDiscovery:()->Unit,onAccounts:()->Unit,onReset:()->Unit,exchanges:List<Exchange> = emptyList(),preflight:PreflightState?=null,onAiSettings:()->Unit={},onOfficialVerification:(()->Unit)?=null){
+@Composable fun PreventionHome(installed:InstalledExchangeState,cases:List<PreventionCase>,loading:Boolean,error:String,onRecord:(CmcExchange,DiagnosticApp)->Unit,onInspect:(CmcExchange,DiagnosticApp)->Unit,onCase:(PreventionCase)->Unit,onDiscovery:()->Unit,onAccounts:()->Unit,onReset:()->Unit,exchanges:List<Exchange> = emptyList(),preflight:PreflightState?=null,onAiSettings:()->Unit={},onOfficialVerification:(()->Unit)?=null,startup:StartupState?=null){
  var confirmReset by remember{mutableStateOf(false)}
  LazyColumn(Modifier.fillMaxSize().testTag("prevention-home"),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   item{
    Text("원인 조사 · 재발 예방",style=MaterialTheme.typography.headlineSmall)
-   Text("거래소의 안내, 당시 상황, 조치 후 결과를 함께 쌓습니다.",style=MaterialTheme.typography.bodySmall)
+   Text("전체 거래소 목록 대조 → 설치 앱 자동 점검 → AI 일괄 검토",style=MaterialTheme.typography.bodySmall)
   }
+  startup?.let{state->item{StartupOverview(state,installed,preflight,exchanges)}}
   item{Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
     Text("내 폰의 거래소 앱",style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
@@ -73,7 +75,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
    if(installed.error.isNotEmpty())Text(installed.error,color=MaterialTheme.colorScheme.error)
    Row{TextButton(onClick=installed::refresh,enabled=!installed.scanning,modifier=Modifier.testTag("home-rescan")){Text("다시 인식")};TextButton(onClick=onDiscovery){Text("못 찾은 앱 지정")}}
   }}}
-  preflight?.let{state->item{Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){PreflightOverview(state,onAiSettings)}}}}
+  if(startup==null)preflight?.let{state->item{Card(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){PreflightOverview(state,onAiSettings)}}}}
   onOfficialVerification?.let{open->item{OutlinedButton(onClick=open,modifier=Modifier.fillMaxWidth().testTag("open-official-verification")){Text("공식 사유 · 신원 검증 결과")}}}
   if(!installed.scanning&&installed.error.isEmpty()&&installed.candidates.isEmpty())item{Text("일치하는 앱을 찾지 못했습니다. 다른 앱 이름·숨긴 앱·업무 프로필은 자동 인식되지 않을 수 있습니다.",style=MaterialTheme.typography.bodySmall)}
   items(installed.candidates,key={"app:"+it.app.packageName}){candidate->
@@ -83,6 +85,7 @@ fun preventionTime(value:String):String=runCatching{DateTimeFormatter.ofPattern(
     Text("공식 배포 앱 여부 미확인 · 계정 없이 원인 기록 가능",style=MaterialTheme.typography.bodySmall)
     preflight?.let{state->state.reports.find{it.app.packageName==candidate.app.packageName}?.let{report->PreflightReportView(report,state.ai[report.id])}}
     candidate.exchanges.forEach{exchange->
+     startup?.let{StartupExchangeView(exchange,it.policies[exchange.id],it.policyErrors[exchange.id])}
      if(candidate.exchanges.size>1)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){ExchangeBrandLogo(catalogExchange(exchanges,exchange),28);Text("이름 일치 후보: ${exchange.name}")}
      Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
       Button(onClick={onRecord(exchange,candidate.app)},enabled=!loading&&error.isEmpty(),modifier=Modifier.testTag("record-${candidate.app.packageName}-${exchange.id}")){Text("원인 기록")}

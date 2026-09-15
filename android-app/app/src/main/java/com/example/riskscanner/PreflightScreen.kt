@@ -69,7 +69,7 @@ class PreflightState{
  fun refresh(){revision++}
 }
 
-@Composable fun rememberPreflight(context:Context,installed:InstalledExchangeState,cases:List<PreventionCase>,blocked:Boolean,configRevision:Int):PreflightState{
+@Composable fun rememberPreflight(context:Context,installed:InstalledExchangeState,cases:List<PreventionCase>,blocked:Boolean,configRevision:Int,useLegacyAi:Boolean=true):PreflightState{
  val state=remember{PreflightState()};val lifecycle=(context as? ComponentActivity)?.lifecycle
  var resumed by remember{mutableStateOf(lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED)!=false)}
  DisposableEffect(lifecycle){val observer=LifecycleEventObserver{_,_->resumed=lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED)==true};lifecycle?.addObserver(observer);onDispose{lifecycle?.removeObserver(observer)}}
@@ -103,7 +103,7 @@ class PreflightState{
     val currentFingerprints=state.reports.associate{it.id to it.fingerprint()}
     val retained=state.ai.filter{(id,review)->currentFingerprints[id]==review.fingerprint}
     if(retained.size!=state.ai.size){state.ai=retained;state.aiMessage="관측 신호가 변경됨 · 다음 자동 AI 검토 대기"}
-    val config=try{withContext(Dispatchers.IO){AutoPreflightConfigStore(context).load()}}catch(_:Exception){state.aiMessage="AI 설정 복구 실패 · 자동 전송 중단. AI 연결에서 다시 설정하세요";null}
+    val config=if(!useLegacyAi)null else try{withContext(Dispatchers.IO){AutoPreflightConfigStore(context).load()}}catch(_:Exception){state.aiMessage="AI 설정 복구 실패 · 자동 전송 중단. AI 연결에서 다시 설정하세요";null}
     if(config!=null){
      if(!config.enabled){state.ai=emptyMap();state.aiMessage=if(config.token.isNotEmpty())"계정 제한 코드가 추가됨 · AI 자동 연결에서 전송 범위를 확인하고 다시 켜세요" else "AI 자동 검토 연결 대기 · 로컬 점검 완료"}
      else if(state.reports.isEmpty()){state.ai=emptyMap();state.aiMessage="AI 검토할 거래소 앱 후보 없음"}
