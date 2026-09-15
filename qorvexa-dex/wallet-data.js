@@ -7,7 +7,7 @@ export const NETWORKS=[
  {chain:arbitrum,name:'Arbitrum',symbol:'ETH',color:'#37a9ef',rpc:'https://arb1.arbitrum.io/rpc',explorer:'https://arbitrum.blockscout.com',coin:'ethereum'},
  {chain:base,name:'Base',symbol:'ETH',color:'#3067fc',rpc:'https://mainnet.base.org',explorer:'https://base.blockscout.com',coin:'ethereum'},
  {chain:optimism,name:'Optimism',symbol:'ETH',color:'#f34d5e',rpc:'https://mainnet.optimism.io',explorer:'https://optimism.blockscout.com',coin:'ethereum'},
- {chain:bsc,name:'BNB Chain',symbol:'BNB',color:'#eac347',rpc:'https://bsc-dataseed.bnbchain.org',explorer:'https://bscscan.com',noBlockscout:true,coin:'binancecoin'},
+ {chain:bsc,name:'BNB Smart Chain (BEP20)',symbol:'BNB',color:'#eac347',rpc:'https://bsc-dataseed.bnbchain.org',explorer:'https://bscscan.com',noBlockscout:true,coin:'binancecoin'},
  {chain:polygon,name:'Polygon',symbol:'POL',color:'#9c6bff',rpc:'https://polygon.drpc.org',explorer:'https://polygon.blockscout.com',coin:'matic-network'},
  {chain:sepolia,name:'Sepolia',symbol:'ETH',color:'#8c94b5',rpc:'https://rpc.sepolia.org',explorer:'https://eth-sepolia.blockscout.com',testnet:true,coin:null},
  {chain:arbitrumSepolia,name:'Arbitrum Sepolia',symbol:'ETH',color:'#718aa8',rpc:'https://sepolia-rollup.arbitrum.io/rpc',explorer:'https://sepolia.arbiscan.io',noBlockscout:true,testnet:true,coin:null}
