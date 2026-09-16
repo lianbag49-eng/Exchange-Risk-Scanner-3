@@ -31,11 +31,17 @@ internal fun startupError(code:String)=when(code){
  "startup_daily_limit"->"오늘 AI 검토 한도 도달 · 미완료 항목은 다음 날 재시도"
  "startup_busy","startup_session_limit"->"검토 서버 혼잡 · 잠시 후 미완료 재시도"
  "startup_session_expired"->"검토 연결 만료 · 미완료 재시도"
+ "startup_not_deployed"->"서버 자동 검토 기능 배포 대기"
  "exchange_not_in_server_directory"->"서버 거래소 목록 갱신 필요 · 기기 점검 결과 유지"
  "directory_unavailable","directory_identity_mismatch","official_site_unavailable"->"거래소 공식 사이트 자료 확보 실패 · 미확인"
  "provider_credentials"->"AI 서버 인증 설정 오류 · 운영자 확인 필요"
- "provider_quota"->"외부 AI 사용 한도 · 운영자 확인 필요"
- "provider_search_configuration"->"AI 검색 모델 설정 확인 필요"
+ "provider_quota"->"외부 AI 사용 한도 응답 · 운영자가 잔액·프로젝트 한도를 확인해야 함"
+ "provider_rate_limit"->"외부 AI 일시 호출 제한 · 검토를 중단했으며 잠시 후 미완료 재시도"
+ "provider_model_access"->"AI 모델 접근 권한·모델 이름 설정 확인 필요"
+ "provider_schema_configuration","provider_output_configuration"->"AI 응답 형식 호환성 오류 · 서버 설정 확인 필요"
+ "provider_search_configuration"->"AI 검색 모델·검색 도구 설정 확인 필요"
+ "provider_timeout"->"AI 응답 시간 초과 · 결과는 미확인, 미완료 재시도 가능"
+ "provider_unavailable"->"외부 AI 연결 실패 · 기기 점검 결과는 유지, AI 검토는 미완료"
  else->"AI 조회 실패 · 미완료 재시도로 다시 확인"
 }
 internal interface StartupGateway{
@@ -49,23 +55,35 @@ internal class HttpStartupGateway:StartupGateway{
   val conn=URI(DEFAULT_AI_SERVER.trimEnd('/')+path).toURL().openConnection() as HttpsURLConnection
   try{
    conn.requestMethod="POST";conn.instanceFollowRedirects=false;conn.connectTimeout=15000;conn.readTimeout=70000;conn.doOutput=true
-   conn.setRequestProperty("Content-Type","application/json");if(token.isNotEmpty())conn.setRequestProperty("Authorization","Bearer $token")
+   conn.setRequestProperty("Content-Type","application/json");if(token.isNotEmpty()&&path!="/v1/startup/session")conn.setRequestProperty("Authorization","Bearer $token")
    conn.outputStream.use{it.write(body.toString().toByteArray(Charsets.UTF_8))}
    val status=conn.responseCode
-   if(status!=200){val code=runCatching{JSONObject(conn.errorStream.use{String(it.kycLimitedBytes(8192),Charsets.UTF_8)}).getString("error")}.getOrDefault("");error(if(status==404)"서버 자동 검토 기능 배포 대기" else startupError(code))}
+   if(status!=200){
+    val code=runCatching{JSONObject(conn.errorStream.use{String(it.kycLimitedBytes(8192),Charsets.UTF_8)}).getString("error")}.getOrDefault("")
+    throw StartupRequestException(if(status==404)"startup_not_deployed" else code.takeIf{it.matches(Regex("[a-z_]{1,80}"))}?:"startup_failed")
+   }
    return JSONObject(conn.inputStream.use{String(it.kycLimitedBytes(131072),Charsets.UTF_8)})
   }finally{conn.disconnect()}
  }
  override suspend fun connect(){
+  currentCoroutineContext().ensureActive()
   val j=post("/v1/startup/session",JSONObject().put("requestId",UUID.randomUUID().toString()).put("consent",true).put("scope",STARTUP_SCOPE))
+  currentCoroutineContext().ensureActive()
   require(j.getString("scope")==STARTUP_SCOPE)
-  Instant.parse(j.getString("expiresAt"));token=j.getString("token");require(token.matches(Regex("[a-f0-9]{64}")))
+  require(Instant.parse(j.getString("expiresAt")).isAfter(Instant.now()))
+  val candidate=j.getString("token");require(candidate.matches(Regex("[a-f0-9]{64}")));token=candidate
  }
- override suspend fun preflight(reports:List<PreflightReport>):List<AiPreflightReview>{
-  val id=UUID.randomUUID().toString();return parseAiPreflight(post("/v1/startup/preflight",JSONObject().put("requestId",id).put("consent",true).put("items",JSONArray().apply{reports.forEach{put(it.item())}})),id,reports)
+ override suspend fun preflight(reports:List<PreflightReport>):List<AiPreflightReview> = withStartupRecovery(renew={connect()}){
+  val id=UUID.randomUUID().toString()
+  val result=post("/v1/startup/preflight",JSONObject().put("requestId",id).put("consent",true).put("items",JSONArray().apply{reports.forEach{put(it.item())}}))
+  currentCoroutineContext().ensureActive()
+  parseAiPreflight(result,id,reports)
  }
- override suspend fun policy(exchange:CmcExchange):StartupPolicy{
-  val id=UUID.randomUUID().toString();return parseStartupPolicy(post("/v1/startup/exchange",JSONObject().put("requestId",id).put("consent",true).put("exchangeId",exchange.id)),id,exchange)
+ override suspend fun policy(exchange:CmcExchange):StartupPolicy = withStartupRecovery(renew={connect()}){
+  val id=UUID.randomUUID().toString()
+  val result=post("/v1/startup/exchange",JSONObject().put("requestId",id).put("consent",true).put("exchangeId",exchange.id))
+  currentCoroutineContext().ensureActive()
+  parseStartupPolicy(result,id,exchange)
  }
 }
 internal class StartupConsent(context:Context,name:String="ers_startup_consent"){
@@ -73,17 +91,25 @@ internal class StartupConsent(context:Context,name:String="ers_startup_consent")
  fun decision():Int=if(prefs.getString("scope","")==STARTUP_SCOPE)prefs.getInt("decision",0) else 0
  fun save(enabled:Boolean){check(prefs.edit().putString("scope",STARTUP_SCOPE).putInt("decision",if(enabled)1 else -1).commit())}
 }
-/** No fixed exchange list or truncated matches. Cancellation and one failed batch
- * never turn the remaining apps into completed or low-risk reviews. */
+/** No fixed exchange list or truncated matches. Shared configuration failures
+ * stop wasteful repeated calls and explicitly retain every remaining failed ID. */
 internal suspend fun runStartupReview(reports:List<PreflightReport>,exchanges:List<CmcExchange>,gateway:StartupGateway,onReviews:suspend(List<AiPreflightReview>)->Unit,onPolicy:suspend(StartupPolicy)->Unit,onFailure:suspend(String,List<String>,List<Int>)->Unit,onProgress:suspend(String)->Unit){
  if(reports.isEmpty()&&exchanges.isEmpty())return
- try{gateway.connect()}catch(e:CancellationException){throw e}catch(e:Exception){onFailure(e.message?:"자동 AI 연결 실패",reports.map{it.id},exchanges.map{it.id});return}
- for((index,batch) in reports.chunked(50).withIndex()){
-  currentCoroutineContext().ensureActive();onProgress("앱 AI 일괄 검토 · ${index+1}/${reports.chunked(50).size} 묶음")
-  try{onReviews(gateway.preflight(batch))}catch(e:CancellationException){throw e}catch(e:Exception){onFailure(e.message?:"AI 검토 실패",batch.map{it.id},emptyList())}
+ val batches=reports.chunked(50)
+ val uniqueExchanges=exchanges.distinctBy{it.id}
+ try{gateway.connect()}catch(e:CancellationException){throw e}catch(e:Exception){onFailure(e.message?:"자동 AI 연결 실패",reports.map{it.id},uniqueExchanges.map{it.id});return}
+ for((index,batch) in batches.withIndex()){
+  currentCoroutineContext().ensureActive();onProgress("앱 AI 일괄 검토 · ${index+1}/${batches.size} 묶음")
+  try{onReviews(gateway.preflight(batch))}catch(e:CancellationException){throw e}catch(e:Exception){
+   if(startupStopsBatch(e)){onFailure(e.message?:"AI 검토 중단",batches.drop(index).flatten().map{it.id},uniqueExchanges.map{it.id});return}
+   onFailure(e.message?:"AI 검토 실패",batch.map{it.id},emptyList())
+  }
  }
- for((index,exchange) in exchanges.distinctBy{it.id}.withIndex()){
-  currentCoroutineContext().ensureActive();onProgress("${exchange.name} 공개 안내 검색 · ${index+1}/${exchanges.distinctBy{it.id}.size}")
-  try{onPolicy(gateway.policy(exchange))}catch(e:CancellationException){throw e}catch(e:Exception){onFailure(e.message?:"공개 자료 조회 실패",emptyList(),listOf(exchange.id))}
+ for((index,exchange) in uniqueExchanges.withIndex()){
+  currentCoroutineContext().ensureActive();onProgress("${exchange.name} 공개 안내 검색 · ${index+1}/${uniqueExchanges.size}")
+  try{onPolicy(gateway.policy(exchange))}catch(e:CancellationException){throw e}catch(e:Exception){
+   if(startupStopsBatch(e)){onFailure(e.message?:"공개 자료 검토 중단",emptyList(),uniqueExchanges.drop(index).map{it.id});return}
+   onFailure(e.message?:"공개 자료 조회 실패",emptyList(),listOf(exchange.id))
+  }
  }
 }

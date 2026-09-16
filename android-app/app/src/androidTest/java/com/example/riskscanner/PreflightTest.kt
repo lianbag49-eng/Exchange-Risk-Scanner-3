@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -73,21 +74,26 @@ class PreflightTest{
  }
  @Test fun firstLaunchShowsBrandAndPhotoFreeInspectionBeforeAnyUpload(){
   val directory=CmcDirectoryStore(context).load();val catalog=ExchangeCatalog.load(context)
+  val observed=AtomicReference<PreflightState>()
   var settings by mutableStateOf(false)
   ui.setContent{
    MaterialTheme(colorScheme=darkColorScheme(primary=Color(0xFFD9B56D))){Surface{
     val ctx=LocalContext.current
     val installed=rememberInstalledExchanges(ctx,Unit,appReader={listOf(app)},directoryReader={directory})
     val state=rememberPreflight(ctx,installed,emptyList(),settings,0)
+    SideEffect{observed.set(state)}
     PreventionHome(installed,emptyList(),false,"",onRecord={_,_->},onInspect={_,_->},onCase={},onDiscovery={},onAccounts={},onReset={},exchanges=catalog,preflight=state,onAiSettings={settings=true})
     if(settings)AutoPreflightDialog(changed={},close={settings=false})
    }}
   }
   ui.waitUntil(15000){ui.onAllNodes(hasTestTag("home-rescan") and isEnabled()).fetchSemanticsNodes().isNotEmpty()}
-  ui.onNodeWithTag("prevention-home").performScrollToNode(hasTestTag("home-app-${app.packageName}"))
-  ui.waitUntil(15000){ui.onAllNodes(hasTestTag("preflight-level-${app.packageName}")).fetchSemanticsNodes().isNotEmpty()}
+  // App discovery and local inspection finish independently. A changing overview
+  // can move a LazyColumn row out of composition; an absent semantics node is
+  // not a completion signal. Await the REAL collector, then scroll to its result.
+  ui.waitUntil(15000){observed.get()?.let{!it.scanning&&it.error.isEmpty()&&it.reports.any{r->r.app.packageName==app.packageName}}==true}
+  ui.onNodeWithTag("prevention-home").performScrollToNode(hasTestTag("preflight-level-${app.packageName}"))
   ui.onNodeWithContentDescription("Binance 로고").assertExists()
-  ui.onNodeWithTag("preflight-level-${app.packageName}").assertExists()
+  ui.onNodeWithTag("preflight-level-${app.packageName}").assertIsDisplayed()
   fun screenshot(name:String){ui.waitForIdle();val automation=InstrumentationRegistry.getInstrumentation().uiAutomation
    for(command in listOf("mkdir -p /sdcard/Download/ers-ui","screencap -p /sdcard/Download/ers-ui/$name.png"))android.os.ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command)).use{it.readBytes()}
   }

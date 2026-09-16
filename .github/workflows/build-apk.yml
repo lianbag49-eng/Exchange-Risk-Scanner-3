@@ -9,10 +9,12 @@ on:
       - ".github/workflows/build-apk.yml"
       - "kyc-service/**"
       - "render.yaml"
+      - "scripts/*apk_release_guard.py"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -41,6 +43,19 @@ jobs:
         working-directory: kyc-service
         run: npm test
 
+      - name: Verify production Docker image actually starts
+        run: |
+          docker build -t ers-ci-review kyc-service
+          docker run --rm -d --name ers-ci-review -p 18080:8080 -e OPENAI_API_KEY=synthetic-never-used -e OPENAI_MODEL=synthetic-never-used -e ERS_REVIEW_TOKEN=synthetic-review-token-with-more-than-32-characters ers-ci-review
+          trap 'docker logs ers-ci-review; docker stop ers-ci-review >/dev/null || true' EXIT
+          # Docker can briefly reset an already-bound port before Node is ready.
+          # Retry this local read only; never parse an empty/failed HTTP response.
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 1 --retry-max-time 20 --max-time 2 --output "$RUNNER_TEMP/ers-health.json" http://127.0.0.1:18080/healthz
+          node -e "const fs=require('node:fs');const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ers-health.json','utf8'));if(r.status!=='ready')process.exit(1);console.log('Packaged ERS server health: ready')"
+
+      - name: Test release compatibility guard
+        run: python -m unittest discover -s scripts -p test_apk_release_guard.py -v
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -65,6 +80,19 @@ jobs:
       - name: Build Debug APK
         working-directory: android-app
         run: gradle --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Verify in-place APK update eligibility
+        id: apk_compat
+        run: python scripts/apk_release_guard.py
+
+      - name: Upload update compatibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ERS-update-compatibility
+          path: apk-update-compatibility.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Enable KVM
         run: |
@@ -111,7 +139,7 @@ jobs:
           retention-days: 30
 
       - name: Publish APK to repository
-        if: github.ref == 'refs/heads/main' && steps.release_scope.outputs.publish == 'true'
+        if: github.ref == 'refs/heads/main' && steps.release_scope.outputs.publish == 'true' && steps.apk_compat.outputs.compatible == 'true'
         run: |
           mkdir -p downloads
           cp android-app/app/build/outputs/apk/debug/app-debug.apk downloads/Exchange-Risk-Scanner.apk
