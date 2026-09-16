@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -27,6 +28,7 @@ import kotlinx.coroutines.withContext
 }
 @Composable fun CauseDialog(case:PreventionCase,onSave:(PreventionCase)->Unit,liveAccounts:List<LinkedExchangeAccount> = emptyList(),close:()->Unit){
  val context=LocalContext.current;val scope=rememberCoroutineScope();val kb=remember{CauseKnowledge(context)};val latestCase by rememberUpdatedState(case)
+ val focusManager=LocalFocusManager.current
  var tab by remember{mutableIntStateOf(0)};var selected by remember{mutableStateOf<List<String>>(emptyList())};var accountId by remember{mutableStateOf("")}
  var accounts by remember{mutableStateOf<List<LinkedExchangeAccount>>(emptyList())};var sameAccount by remember{mutableStateOf(false)}
  var endpoint by remember{mutableStateOf(DEFAULT_AI_SERVER)};var token by remember{mutableStateOf("")};var consent by remember{mutableStateOf(false)}
@@ -44,7 +46,7 @@ import kotlinx.coroutines.withContext
   Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(18.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
    Row{Text("근거 기반 원인 분석",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=close,modifier=Modifier.testTag("close-causes")){Text("닫기")}}
    Text(case.exchangeName+" · 공개 자료 ${kb.reviewedAt} 확인",style=MaterialTheme.typography.bodySmall)
-   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("분석","결과","사후 대조").forEachIndexed{i,label->FilterChip(selected=tab==i,onClick={tab=i},label={Text(label)},modifier=Modifier.weight(1f).testTag("cause-tab-$i"))}}
+   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){listOf("분석","결과","사후 대조").forEachIndexed{i,label->FilterChip(selected=tab==i,onClick={focusManager.clearFocus();tab=i},label={Text(label)},modifier=Modifier.weight(1f).testTag("cause-tab-$i"))}}
    when(tab){
     0->{
      Text("거래소의 공개 기준에 맞는 원인 후보를 좁힙니다. 상세 기준은 Bybit·Binance·OKX 일부 항목을 지원합니다. 단서가 부족하면 미확인으로 남깁니다.")
@@ -82,8 +84,10 @@ import kotlinx.coroutines.withContext
      CauseChoice("확인한 원인 분류",category,linkedMapOf("unknown" to "아직 사유 미확인").apply{putAll(causeLabels);put("other","다른 원인")},"cause-finding-category"){category=it;reviewed=false}
      CauseChoice("확인 근거",findingSource,causeFindingSources,"cause-finding-source"){findingSource=it;reviewed=false}
      OutlinedTextField(reference,{reference=it.take(1500);reviewed=false},label={Text("확인 시각·지원 티켓·답변 요지")},supportingText={Text("10자 이상 · 신분증 번호·비밀번호 제외. 이 메모는 폰에만 보관합니다.")},modifier=Modifier.fillMaxWidth().testTag("cause-finding-reference"))
-     Row{Checkbox(reviewed,{reviewed=it},modifier=Modifier.testTag("cause-finding-reviewed"));Text("AI 후보를 복사한 것이 아니라 위 자료를 직접 대조해 기록했습니다.",modifier=Modifier.padding(top=8.dp))}
-     Button(onClick={try{onSave(case.withCauseFinding(CauseFinding(category=category,source=findingSource,reference=reference.trim())));reference="";reviewed=false;message="사후 대조 기록을 추가했습니다"}catch(_:Exception){message="사후 기록 저장 실패 · 기존 기록은 유지됩니다"}},enabled=reviewed&&reference.trim().length>=10&&case.causeFindings.size<50&&!busy,modifier=Modifier.fillMaxWidth().testTag("save-cause-finding")){Text("확인 근거 추가 저장")}
+     // End text editing before confirmation so focus-driven scrolling cannot
+     // pull the form away from the save action while the IME changes its insets.
+     Row{Checkbox(reviewed,{focusManager.clearFocus();reviewed=it},modifier=Modifier.testTag("cause-finding-reviewed"));Text("AI 후보를 복사한 것이 아니라 위 자료를 직접 대조해 기록했습니다.",modifier=Modifier.padding(top=8.dp))}
+     Button(onClick={focusManager.clearFocus();try{onSave(latestCase.withCauseFinding(CauseFinding(category=category,source=findingSource,reference=reference.trim())));reference="";reviewed=false;message="사후 대조 기록을 추가했습니다"}catch(_:Exception){message="사후 기록 저장 실패 · 기존 기록은 유지됩니다"}},enabled=reviewed&&reference.trim().length>=10&&case.causeFindings.size<50&&!busy,modifier=Modifier.fillMaxWidth().testTag("save-cause-finding")){Text("확인 근거 추가 저장")}
      Text("수정이 필요하면 새 기록을 추가하세요. 이전 기록도 남습니다. 단순히 해결됐다는 결과만으로 원인을 확정하지 않습니다.",style=MaterialTheme.typography.bodySmall)
      case.causeFindings.asReversed().forEach{f->Card(Modifier.fillMaxWidth()){Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){Text("${preventionTime(f.recordedAt)} · ${causeLabels[f.category]?:if(f.category=="other")"다른 원인" else "미확인"}");Text(causeFindingSources[f.source].orEmpty());Text(f.reference);Text("사용자 대조 · 원문 진위 별도 검증 안 됨",style=MaterialTheme.typography.bodySmall)}}}
     }
