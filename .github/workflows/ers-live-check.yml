@@ -1,4 +1,4 @@
-name: ERS live startup verification
+name: ERS startup recovery verification
 on:
   workflow_dispatch:
   push:
@@ -18,13 +18,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Existing isolated service tests
+      - name: Existing and recovery service tests
         working-directory: kyc-service
         run: npm test
       - name: Synthetic-only production startup and AI verification
+        if: github.event_name == 'workflow_dispatch'
         run: node scripts/ers-live-smoke.mjs
       - name: Upload bounded verification result
-        if: always()
+        if: always() && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: ers-live-startup-report

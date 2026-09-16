@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {ReviewError} from './review.mjs';
-import {providerFailure} from './provider-errors.mjs';
+import {requestProvider} from './provider-errors.mjs';
 
 export const SIGNALS=['app_debuggable','no_screen_lock','adb_enabled','security_patch_old','auto_time_off','app_disabled','network_unvalidated','no_network','kyc_followup','vpn_present','proxy_present','user_reported_open_incident','reported_restriction'];
 export const UNKNOWNS=['app_metadata_missing','device_observation_missing','security_patch_unknown','official_app_unverified','account_identity_unknown','exchange_risk_unknown','api_status_unknown','latest_version_unknown'];
@@ -26,15 +26,12 @@ export function preflightSummary(body,output,model){
  });
  return {requestId:body.requestId,inputSha256:body.inputSha256,reviewedAt:new Date().toISOString(),model,reviews,source:'ai_preflight',riskScope:'observed_technical_signals',actualCauseConfirmed:false,officialVerified:false};
 }
+// Avoid reserving 8,000 output tokens for a one- or two-app check.
+export function preflightTokenBudget(count){return Math.min(8000,Math.max(1024,512+count*160));}
 export async function reviewPreflight(body,{apiKey,model,fetchFn=fetch}){
- const itemSchema={
-  type:'object',additionalProperties:false,required:['id','focus','checks'],
-  properties:{id:{type:'string'},focus:{type:'array',items:{type:'string',enum:SIGNALS}},checks:{type:'array',items:{type:'string',enum:CHECKS}}}
- };
+ const itemSchema={type:'object',additionalProperties:false,required:['id','focus','checks'],properties:{id:{type:'string'},focus:{type:'array',items:{type:'string',enum:SIGNALS}},checks:{type:'array',items:{type:'string',enum:CHECKS}}}};
  const schema={type:'object',additionalProperties:false,required:['reviews'],properties:{reviews:{type:'array',items:itemSchema}}};
- let response;
- try{response=await fetchFn('https://api.openai.com/v1/responses',{method:'POST',redirect:'error',signal:AbortSignal.timeout(45000),headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model,store:false,max_output_tokens:8000,instructions:'Review anonymized device observations for an exchange app self-check. This is technical triage, not a fraud score, identity verification, KYC authenticity check, or exchange ban prediction. Return exactly one review for each input id. Order the supplied observed signals by what should be examined first; focus must contain only supplied signals and include app_debuggable when present. VPN/proxy alone do not establish misuse or account risk. user_reported_open_incident is an unverified user report. Unknowns are not adverse evidence. Choose useful next checks from the allowed codes. Never provide bypass, spoofing or hidden tracking instructions. Do not claim access to app sessions, app screens, private account details or exchange systems. Return no free text.',input:JSON.stringify(body.items),text:{format:{type:'json_schema',name:'ers_preflight',strict:true,schema}}})});}catch{throw new ReviewError('provider_unavailable',502)}
- if(!response.ok)await providerFailure(response,model,'preflight');
+ const response=await requestProvider({max_output_tokens:preflightTokenBudget(body.items.length),instructions:'Review anonymized device observations for an exchange app self-check. This is technical triage, not a fraud score, identity verification, KYC authenticity check, or exchange ban prediction. Return exactly one review for each input id. Order the supplied observed signals by what should be examined first; focus must contain only supplied signals and include app_debuggable when present. VPN/proxy alone do not establish misuse or account risk. user_reported_open_incident is an unverified user report. Unknowns are not adverse evidence. Choose useful next checks from the allowed codes. Never provide bypass, spoofing or hidden tracking instructions. Do not claim access to app sessions, app screens, private account details or exchange systems. Return no free text.',input:JSON.stringify(body.items),text:{format:{type:'json_schema',name:'ers_preflight',strict:true,schema}}},{apiKey,model,scope:'preflight',fetchFn});
  let data;try{data=await response.json()}catch{throw new ReviewError('invalid_model_response',502)}
  if(data.status!=='completed')throw new ReviewError('incomplete_review',502);
  const content=(data.output||[]).filter(x=>x.type==='message').flatMap(x=>x.content||[]);
