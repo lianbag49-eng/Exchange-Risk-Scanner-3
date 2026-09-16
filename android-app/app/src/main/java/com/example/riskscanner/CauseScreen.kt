@@ -45,7 +45,7 @@ import kotlinx.coroutines.withContext
  // Insets are applied explicitly below. Do not also use a floating, decor-fitted
  // dialog window, whose measured height can clip the bottom action area.
  Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false,securePolicy=SecureFlagPolicy.SecureOn)){Surface(Modifier.fillMaxSize()){
-  Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()){
+  Column(Modifier.fillMaxSize().windowInsetsPadding(rememberVisibleWindowInsets())){
    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
     Row{Text("근거 기반 원인 분석",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=close,modifier=Modifier.testTag("close-causes")){Text("닫기")}}
     Text(case.exchangeName+" · 공개 자료 ${kb.reviewedAt} 확인",style=MaterialTheme.typography.bodySmall)

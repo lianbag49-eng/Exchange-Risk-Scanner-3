@@ -1,0 +1,40 @@
+name: ERS backend verification
+on:
+  push:
+    branches: [main, codex/ers-backend-recovery]
+    paths: [kyc-service/**, scripts/ers-live-smoke.mjs, .github/workflows/ers-backend.yml]
+  pull_request:
+    paths: [kyc-service/**, scripts/ers-live-smoke.mjs, .github/workflows/ers-backend.yml]
+  workflow_dispatch:
+    inputs:
+      live:
+        description: Run bounded synthetic production inference checks
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All isolated service tests
+        working-directory: kyc-service
+        run: npm test
+      - name: Build the actual production Docker image
+        run: docker build -t ers-backend-verification kyc-service
+      - name: Bounded production verification with invented observations only
+        if: github.event_name == 'workflow_dispatch' && inputs.live
+        run: node scripts/ers-live-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.live
+        with:
+          name: ers-live-report
+          path: ers-live-report.json
+          retention-days: 7

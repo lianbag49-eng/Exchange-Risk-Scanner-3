@@ -1,0 +1,26 @@
+name: ERS deployed backend verification
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/ers-live-recovery]
+    paths: [.github/workflows/ers-deploy-verification.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check deployed endpoints using invented observations only
+        run: node scripts/ers-live-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ers-post-deploy-report
+          path: ers-live-report.json
+          if-no-files-found: error
+          retention-days: 7

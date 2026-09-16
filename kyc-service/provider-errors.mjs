@@ -1,7 +1,7 @@
 import {setTimeout as sleep} from 'node:timers/promises';
 import {ReviewError} from './review.mjs';
 
-// Keep provider messages, request bodies and credentials out of logs/responses.
+// Provider messages, request bodies and credentials must never reach logs/responses.
 const safe=v=>typeof v==='string'&&/^[a-zA-Z0-9_.:[\]-]{1,80}$/.test(v)&&!v.startsWith('sk-')?v:'unspecified';
 export function classifyProviderFailure(status,error={}){
  if(status===401)return 'provider_credentials';
@@ -24,12 +24,14 @@ export async function providerFailure(response,model,scope){
  let error;try{error=(await response.json()).error}catch{}
  console.error(JSON.stringify({event:'ers_provider_rejected',scope:safe(scope),status:response.status||0,code:safe(error?.code),parameter:safe(error?.param),model:safe(model)}));
  const result=new ReviewError(classifyProviderFailure(response.status,error),502);
+ // A bounded parameter code is for internal compatibility handling, not a provider message.
+ result.parameter=safe(error?.param);
  result.retryable=result.code==='provider_rate_limit'||[500,502,503,504].includes(response.status);
  result.retryAfterMs=retryAfter(response);
  throw result;
 }
-/** Retry one explicitly rejected transient request, never exhausted credit,
- * authentication, invalid configuration, or ambiguous network/timeouts. */
+/** Retry one explicit transient rejection. Credit exhaustion, invalid credentials,
+ * invalid configuration and ambiguous network/timeouts are never replayed. */
 export async function requestProvider(payload,{apiKey,model,scope,fetchFn=fetch,sleepFn=sleep,timeoutMs=45000}){
  const started=Date.now();
  for(let attempt=0;attempt<2;attempt++){

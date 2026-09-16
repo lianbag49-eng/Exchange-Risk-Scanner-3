@@ -18,6 +18,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Determine Android release scope
+        id: release_scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          elif git diff --quiet HEAD^ HEAD -- android-app; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -80,16 +95,11 @@ jobs:
         run: |
           python - <<'PYCODE'
           from pathlib import Path
-          import base64
-          for name in ['startup-complete','startup-coverage','home','prevention-auto-home','prevention-case','preflight-logos','preflight-no-photo','official-verification','official-restrictions','cause-hypotheses','cause-followup','account','exchange-discovery','app-diagnostic-start','app-diagnostic-captured','ai-connection','capture-test-failure']:
-              p=Path('android-app/screenshots/'+name+'.png')
-              if p.exists():
-                  print('ERS_PREVIEW_'+name+':'+base64.b64encode(p.read_bytes()).decode())
+          import xml.etree.ElementTree as ET
           for p in Path('android-app/app/build/outputs/androidTest-results').rglob('*.xml'):
-              import xml.etree.ElementTree as ET
               for failure in ET.parse(p).iter('failure'):
                   print('ERS_TEST_FAILURE:'+failure.attrib.get('message',''))
-                  print((failure.text or '')[:5000])
+                  print((failure.text or '')[:8000])
           PYCODE
 
       - name: Upload APK artifact
@@ -101,7 +111,7 @@ jobs:
           retention-days: 30
 
       - name: Publish APK to repository
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.release_scope.outputs.publish == 'true'
         run: |
           mkdir -p downloads
           cp android-app/app/build/outputs/apk/debug/app-debug.apk downloads/Exchange-Risk-Scanner.apk
