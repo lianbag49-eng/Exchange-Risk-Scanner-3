@@ -79,16 +79,19 @@ class CauseTest{
   var c by mutableStateOf(case().withCauseReview(review()))
   ui.setContent{MaterialTheme{CauseDialog(c,onSave={c=it},close={})}}
   ui.onNodeWithTag("cause-tab-2").performClick()
-  ui.onNodeWithTag("save-cause-finding").performScrollTo().assertIsNotEnabled()
+  // The fixed action bar is visible without scrolling the note/history form.
+  ui.onNodeWithTag("cause-save-bar").assertIsDisplayed()
+  ui.onNodeWithTag("save-cause-finding").assertIsDisplayed().assertIsNotEnabled()
   ui.onNodeWithTag("cause-finding-reference").performScrollTo().performTextInput("TEST ONLY: support says review still pending")
-  // IME is a separate Android window. Let it close before using touch coordinates.
   androidx.test.espresso.Espresso.closeSoftKeyboard()
   ui.waitForIdle()
-  ui.onNodeWithTag("save-cause-finding").performScrollTo().assertIsNotEnabled()
+  ui.onNodeWithTag("save-cause-finding").assertIsDisplayed().assertIsNotEnabled()
   ui.onNodeWithTag("cause-finding-reviewed").performScrollTo().performClick()
-  ui.onNodeWithTag("save-cause-finding").performScrollTo().assertIsEnabled().assertIsDisplayed().performClick()
+  ui.waitForIdle()
+  ui.onNodeWithTag("save-cause-finding").assertIsEnabled().assertIsDisplayed().performClick()
   ui.waitUntil(5000){c.causeFindings.size==1}
   ui.onNodeWithTag("cause-comparison").performScrollTo().assertTextEquals("사유 미확인 · 비교 제외")
+  ui.onNodeWithTag("save-cause-finding").assertIsDisplayed().assertIsNotEnabled()
   ui.runOnIdle{assertEquals(1,c.causeFindings.size);assertFalse(c.causeFindings.single().json().getBoolean("officialVerified"));assertEquals("unknown",c.causeFindings.single().category)}
  }
 }
