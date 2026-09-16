@@ -48,7 +48,10 @@ jobs:
           docker build -t ers-ci-review kyc-service
           docker run --rm -d --name ers-ci-review -p 18080:8080 -e OPENAI_API_KEY=synthetic-never-used -e OPENAI_MODEL=synthetic-never-used -e ERS_REVIEW_TOKEN=synthetic-review-token-with-more-than-32-characters ers-ci-review
           trap 'docker logs ers-ci-review; docker stop ers-ci-review >/dev/null || true' EXIT
-          curl --fail --silent --show-error --retry 8 --retry-connrefused --retry-delay 1 --max-time 2 http://127.0.0.1:18080/healthz | node -e "let s='';process.stdin.on('data',c=>s+=c).on('end',()=>{if(JSON.parse(s).status!=='ready')process.exit(1)})"
+          # Docker can briefly reset an already-bound port before Node is ready.
+          # Retry this local read only; never parse an empty/failed HTTP response.
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --retry-delay 1 --retry-max-time 20 --max-time 2 --output "$RUNNER_TEMP/ers-health.json" http://127.0.0.1:18080/healthz
+          node -e "const fs=require('node:fs');const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/ers-health.json','utf8'));if(r.status!=='ready')process.exit(1);console.log('Packaged ERS server health: ready')"
 
       - name: Test release compatibility guard
         run: python -m unittest discover -s scripts -p test_apk_release_guard.py -v
