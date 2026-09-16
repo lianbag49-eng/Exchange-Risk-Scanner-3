@@ -52,7 +52,9 @@ import kotlinx.coroutines.withContext
  val filteredEntries=directory.entries.filter{it.name.contains(search,true)||it.slug.contains(search,true)}
  Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)){
   Surface(Modifier.fillMaxSize()){
-   Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(18.dp)){
+   // The lazy list must end inside the native visible frame, not merely the
+   // measured Compose root; otherwise bottom-row touch targets can be clipped.
+   Column(Modifier.fillMaxSize().windowInsetsPadding(rememberVisibleWindowInsets()).padding(18.dp)){
     Row{Text("거래소 앱 자동 인식",style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));TextButton(onClick=close,modifier=Modifier.testTag("close-discovery")){Text("닫기")}}
     Text("CMC 목록 ${directory.entries.size}개 · "+when(directory.origin){"live"->"방금 갱신";"cache"->"저장된 목록";else->"내장 목록"},modifier=Modifier.testTag("discovery-catalog-count"))
     Text("목록 확인: ${directory.checkedAt.take(19).replace('T',' ')} UTC",style=MaterialTheme.typography.bodySmall)
