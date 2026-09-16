@@ -13,7 +13,7 @@ const exchange=exchanges.get(270);
 test('provider diagnostics identify rejected parameters without logging provider messages or credentials',async()=>{
  const logs=[],original=console.error;console.error=value=>logs.push(value);
  try{
-  await assert.rejects(providerFailure({status:400,json:async()=>({error:{code:'unsupported_parameter',param:'text.format',message:'private sk-never-log-this'}})},'gpt-4.1-mini','research'),e=>e.code==='provider_search_configuration');
+  await assert.rejects(providerFailure({status:400,json:async()=>({error:{code:'unsupported_parameter',param:'text.format',message:'private sk-never-log-this'}})},'gpt-4.1-mini','research'),e=>e.code==='provider_output_configuration');
   await assert.rejects(providerFailure({status:401,json:async()=>({error:{code:'invalid_api_key',param:'sk-never-log-this',message:'private'}})},'sk-never-log-this','preflight'),e=>e.code==='provider_credentials');
  }finally{console.error=original}
  assert.equal(JSON.parse(logs[0]).parameter,'text.format');assert.equal(logs.length,2);assert(!logs.join('').includes('never-log'));assert(!logs.join('').includes('private'));
