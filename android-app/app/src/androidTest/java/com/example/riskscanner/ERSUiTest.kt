@@ -138,7 +138,11 @@ class ERSUiTest {
   ui.onNodeWithTag("discovery-app-list").performScrollToNode(hasTestTag("assign-exchange-com.android.settings"))
   ui.onNodeWithTag("assign-exchange-com.android.settings").performClick()
   ui.onNodeWithTag("cmc-search").performTextInput("Tapbit")
-  ui.onNodeWithText("화면 검토").performClick()
+  // Complete the separate IME transition before touching the result action.
+  androidx.test.espresso.Espresso.closeSoftKeyboard()
+  ui.waitForIdle()
+  ui.onNodeWithText("화면 검토").assertIsDisplayed().performClick()
+  ui.waitUntil(5000){ui.onAllNodesWithText("Tapbit 설치 후보 · 계정 미확인 · 오류 화면과 기기 상태 검토").fetchSemanticsNodes().size==1}
   ui.onNodeWithText("Tapbit 설치 후보 · 계정 미확인 · 오류 화면과 기기 상태 검토").assertExists()
   ui.onNodeWithTag("diagnostic-capture").performScrollTo().assertIsEnabled()
   ui.onNodeWithTag("run-app-diagnostic").performScrollTo().assertIsNotEnabled()
