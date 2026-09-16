@@ -1,5 +1,6 @@
 import {setTimeout as sleep} from 'node:timers/promises';
 import {ReviewError} from './review.mjs';
+import {providerHint} from './provider-hints.mjs';
 
 // Provider messages, request bodies and credentials must never reach logs/responses.
 const safe=v=>typeof v==='string'&&/^[a-zA-Z0-9_.:[\]-]{1,80}$/.test(v)&&!v.startsWith('sk-')?v:'unspecified';
@@ -22,7 +23,7 @@ function retryAfter(response){
 }
 export async function providerFailure(response,model,scope){
  let error;try{error=(await response.json()).error}catch{}
- console.error(JSON.stringify({event:'ers_provider_rejected',scope:safe(scope),status:response.status||0,code:safe(error?.code),parameter:safe(error?.param),model:safe(model)}));
+ console.error(JSON.stringify({event:'ers_provider_rejected',scope:safe(scope),status:response.status||0,code:safe(error?.code),parameter:safe(error?.param),model:safe(model),hint:providerHint(error)}));
  const result=new ReviewError(classifyProviderFailure(response.status,error),502);
  // A bounded parameter code is for internal compatibility handling, not a provider message.
  result.parameter=safe(error?.param);
