@@ -9,8 +9,8 @@ android {
         applicationId = "com.example.riskscanner"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.18.1"
+        versionCode = 21
+        versionName = "1.18.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }
