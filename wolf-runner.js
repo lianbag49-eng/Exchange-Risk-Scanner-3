@@ -1,14 +1,16 @@
 const http=require('http');
 const targets=[
  'https://wolf-telegram-support-ocdwtvgxt-dope18.vercel.app/api/ping',
- 'https://wolf-telegram-support-ocdwtvgxt-dope18.vercel.app/api/setup'
+ 'https://wolf-telegram-support-ocdwtvgxt-dope18.vercel.app/api/setup',
+ 'https://wolf-telegram-support-bot-dope18.vercel.app/api/ping',
+ 'https://wolf-telegram-support-bot-dope18.vercel.app/api/setup'
 ];
 async function run(){
  for(const u of targets){
   try{
    const r=await fetch(u);
    const t=await r.text();
-   console.log('CHECK',u,'STATUS',r.status,'BODY',t);
+   console.log('CHECK',u,'STATUS',r.status,'BODY',t.slice(0,800));
   }catch(e){console.error('CHECKERR',u,e&&e.stack||e)}
  }
 }
