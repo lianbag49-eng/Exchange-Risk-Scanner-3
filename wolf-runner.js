@@ -1,9 +1,6 @@
 const http=require('http');
 const targets=[
- 'https://wolf-telegram-support-ocdwtvgxt-dope18.vercel.app/api/ping',
- 'https://wolf-telegram-support-ocdwtvgxt-dope18.vercel.app/api/setup',
- 'https://wolf-telegram-support-bot-dope18.vercel.app/api/ping',
- 'https://wolf-telegram-support-bot-dope18.vercel.app/api/setup'
+ 'https://wolf-telegram-support-bot-dope18.vercel.app/api/ping'
 ];
 async function run(){
  for(const u of targets){
