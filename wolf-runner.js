@@ -1,15 +1,18 @@
 const http=require('http');
-const targets=[
- 'https://wolf-telegram-support-bot-dope18.vercel.app/api/ping'
-];
-async function run(){
- for(const u of targets){
+let didSetup=false;
+async function hit(u){
   try{
-   const r=await fetch(u);
-   const t=await r.text();
-   console.log('CHECK',u,'STATUS',r.status,'BODY',t.slice(0,800));
+    const r=await fetch(u);
+    const t=await r.text();
+    console.log('CHECK',u,'STATUS',r.status,'BODY',t.slice(0,1200));
   }catch(e){console.error('CHECKERR',u,e&&e.stack||e)}
- }
+}
+async function run(){
+  await hit('https://wolf-telegram-support-bot-dope18.vercel.app/api/ping');
+  if(!didSetup){
+    didSetup=true;
+    await hit('https://wolf-telegram-support-bot-dope18.vercel.app/api/setup');
+  }
 }
 run();
 setInterval(run,60000);
