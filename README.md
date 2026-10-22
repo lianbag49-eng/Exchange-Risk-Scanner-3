@@ -2,6 +2,8 @@
 
 Android exchange incident investigation and recurrence-prevention app. APK is built with GitHub Actions. iOS source is in `ios-app/`.
 
+**해외 거래소 간 차익거래 자동화:** [`arbitrage-bot/`](arbitrage-bot/README.md). Binance·Bybit·OKX 현물 가격 차이를 조회하고 거래합니다. 기본값은 모의매매이며, 실거래는 출금 권한 없는 키와 명시적 확인이 있어야 실행됩니다.
+
 ## Android 1.16 · 공식 제한 조회와 신원확인 업체 결과
 
 홈의 **공식 사유 · 신원 검증 결과**에서 거래소 API와 신원확인 업체 결과를 확인합니다. 기존 캡처 AI는 계속 별도 근거입니다.

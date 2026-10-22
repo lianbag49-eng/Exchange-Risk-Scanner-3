@@ -1,0 +1,1 @@
+{"name":"ers-arbitrage-bot","private":true,"type":"module","engines":{"node":">=22"},"bin":{"arb":"cli.mjs"},"scripts":{"scan":"node cli.mjs scan","paper":"node cli.mjs run","test":"node --test test/*.test.mjs"}}

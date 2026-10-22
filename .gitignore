@@ -12,3 +12,6 @@ qorvexa-dex/wallet.bundle.js
 .env
 .env.*
 kyc-service/node_modules/
+
+# Arbitrage bot runtime journal and risk state
+arbitrage-bot/data/
