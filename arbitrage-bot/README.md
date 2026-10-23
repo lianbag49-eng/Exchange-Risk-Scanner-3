@@ -92,12 +92,30 @@ node cli.mjs run --live --config config.json
 
 | 키 | 기본값 | 설명 |
 | --- | --- | --- |
-| `fees` | 각 0.001 | 테이커 수수료(비율). 본인 VIP 등급과 할인 적용 여부에 맞게 바꾸세요. |
+| `fees` | 각 0.001 | 테이커 수수료(비율). 일반(비VIP) 회원 기준값입니다. 아래 '수수료' 절을 참고하세요. |
 | `minEdgeBps` | 15 | 수수료 차감 후 최소 순수익률(bp). 5 미만은 거부합니다. |
 | `maxNotional` | 200 | 1회 최대 매수 금액(견적 통화) |
 | `maxBookAgeMs` | 800 | 이보다 늦게 도착한 호가는 사용하지 않음 |
 | `dailyLossLimit` | 20 | 일일 손실 한도 |
 | `paperBalances` | — | 모의매매 시작 잔고 |
+
+## 수수료
+
+기본값 0.1%는 세 거래소 **일반(비VIP) 회원의 글로벌 현물 테이커 수수료**입니다. 최고 VIP 등급의 최저 수수료가 아닙니다. 2026-10 공식 수수료표 기준은 다음과 같습니다.
+
+| 거래소 | 일반 회원 테이커 | 최고 등급 테이커 | 비고 |
+| --- | --- | --- | --- |
+| Binance | 0.100% (BNB 결제 0.075%) | VIP 9: 0.023% (BNB 0.01725%) | |
+| Bybit | 0.100% | Supreme VIP: 0.045% | |
+| OKX | 0.100% (글로벌) | VIP 9: 0.015% | 법인·지역마다 다릅니다. 싱가포르는 0.2%, 미국은 0.35%입니다. |
+
+**본인 계정의 실제 요율을 쓰세요.**
+- **실거래:** 시작할 때 각 거래소 API에서 계정의 실제 테이커 요율을 읽습니다. 설정값과 실제값 중 **높은 쪽**을 사용합니다. 설정이 실제보다 낮게 잘못 입력돼 있어도, 손실 거래가 이익으로 계산되지 않습니다.
+  - Binance: `/api/v3/account/commission`
+  - Bybit: `/v5/account/fee-rate`
+  - OKX: `/api/v5/account/trade-fee`
+- **백테스트·모의매매:** 키를 설정하고 `node cli.mjs fees`를 실행하면 계정 요율과 config에 넣을 값을 출력합니다.
+- **BNB 할인:** Binance의 BNB 수수료 할인은 BNB 잔고가 있을 때만 적용됩니다. 그래서 보수적으로 반영하지 않습니다.
 
 ## 알아둘 한계
 
@@ -111,7 +129,7 @@ node cli.mjs run --live --config config.json
 ## 구조
 
 ```
-cli.mjs              scan / record / backtest / run [--live] / status / reset
+cli.mjs              scan / fees / record / backtest / run [--live] / status / reset
 src/exchanges.mjs    Binance·Bybit·OKX 어댑터 (공개 호가·마켓 규칙, 서명 주문·잔고·키 권한 확인)
 src/book.mjs         호가 정규화, 깊이 순회, 수량·가격 단위 처리
 src/opportunity.mjs  거래소 쌍별 수량 산정과 최적 기회 선택

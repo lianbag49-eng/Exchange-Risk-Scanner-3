@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { binance, bybit, okx, credsFromEnv } from '../src/exchanges.mjs';
-import { createEngine, DEFAULTS, validateConfig } from '../src/engine.mjs';
+import { createEngine, DEFAULTS, validateConfig, resolveFees } from '../src/engine.mjs';
 import { paperExecutor } from '../src/executor.mjs';
 import { RiskManager } from '../src/risk.mjs';
 import { loadConfig } from '../cli.mjs';
@@ -154,4 +154,21 @@ test('engine end to end in paper mode: trades a real cross, journals it, then th
   const [second] = await engine.runOnce();
   assert.equal(second.skipped, 'pair cooldown');
   assert.equal(JSON.parse(readFileSync(join(dir, 'risk.json'), 'utf8')).tradesToday, 1);
+});
+
+test('account taker fees are read per exchange and the bot never uses a fee below the real one', async () => {
+  const f = fakeFetch({
+    'GET /api/v3/account/commission': { standardCommission: { taker: '0.00100000' }, taxCommission: { taker: '0.00000000' }, specialCommission: { taker: '0.00000000' }, discount: { enabledForAccount: true, discount: '0.75000000' } },
+    'GET /v5/account/fee-rate': { retCode: 0, result: { list: [{ symbol: 'BTCUSDT', takerFeeRate: '0.00045', makerFeeRate: '0.0003' }] } },
+    'GET /api/v5/account/trade-fee': { code: '0', data: [{ instType: 'SPOT', taker: '-0.002', maker: '-0.001' }] },
+  });
+  const ex = { binance: binance({ fetchFn: f.fetchFn, creds, now: () => NOW }), bybit: bybit({ fetchFn: f.fetchFn, creds, now: () => NOW }), okx: okx({ fetchFn: f.fetchFn, creds, now: () => NOW }) };
+  assert.equal(await ex.binance.fetchTakerFee('BTC/USDT'), 0.001);
+  assert.equal(await ex.bybit.fetchTakerFee('BTC/USDT'), 0.00045);
+  assert.equal(await ex.okx.fetchTakerFee('BTC/USDT'), 0.002, 'OKX charged fee is negative in the API');
+  const cfg = { ...DEFAULTS, symbols: ['BTC/USDT'], fees: { binance: 0.001, bybit: 0.001, okx: 0.001 } };
+  const { fees, rows } = await resolveFees({ cfg, adapters: ex });
+  assert.deepEqual(fees, { binance: 0.001, bybit: 0.001, okx: 0.002 }, 'max(configured, actual)');
+  assert.equal(rows.find(r => r.exchange === 'okx').actual, 0.002);
+  await assert.rejects(resolveFees({ cfg, adapters: { ...ex, okx: { fetchTakerFee: async () => NaN } } }), /implausible/);
 });

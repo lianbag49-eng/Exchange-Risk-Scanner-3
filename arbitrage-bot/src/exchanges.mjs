@@ -61,6 +61,11 @@ export function binance({ creds, now = Date.now, ...opts } = {}) {
         minNotional: Number(f('NOTIONAL').minNotional ?? f('MIN_NOTIONAL').minNotional ?? 0),
       };
     },
+    /** Account taker rate for the symbol: standard + tax + special. A BNB discount is ignored (conservative). */
+    async fetchTakerFee(symbol) {
+      const r = await signed('GET', '/api/v3/account/commission', { symbol: native(symbol) });
+      return ['standardCommission', 'taxCommission', 'specialCommission'].reduce((sum, k) => sum + Number(r[k]?.taker ?? 0), 0);
+    },
     async checkKeySafety() {
       const r = await signed('GET', '/sapi/v1/account/apiRestrictions');
       if (r.enableWithdrawals !== false) return { ok: false, reason: 'API key allows withdrawals; create a trade-only key' };
@@ -111,6 +116,11 @@ export function bybit({ creds, now = Date.now, wait = sleep, ...opts } = {}) {
         lotStep: Number(s.lotSizeFilter.basePrecision), minQty: Number(s.lotSizeFilter.minOrderQty),
         tickSize: Number(s.priceFilter.tickSize), minNotional: Number(s.lotSizeFilter.minOrderAmt ?? 0),
       };
+    },
+    async fetchTakerFee(symbol) {
+      const row = (await signed('GET', '/v5/account/fee-rate', { category: 'spot', symbol: native(symbol) })).list?.[0];
+      if (!row) throw new ExchangeError(id, `no fee rate for ${symbol}`, 'fee');
+      return Number(row.takerFeeRate);
     },
     async checkKeySafety() {
       const r = await signed('GET', '/v5/user/query-api');
@@ -163,6 +173,12 @@ export function okx({ creds, now = Date.now, wait = sleep, ...opts } = {}) {
       const s = ok(await http(`/api/v5/public/instruments?instType=SPOT&instId=${native(symbol)}`))[0];
       if (!s || s.state !== 'live') throw new ExchangeError(id, `${symbol} not trading`, 'market');
       return { lotStep: Number(s.lotSz), minQty: Number(s.minSz), tickSize: Number(s.tickSz), minNotional: 0 };
+    },
+    /** OKX reports charged fees as negative numbers and rebates as positive. */
+    async fetchTakerFee(symbol) {
+      const row = (await signed('GET', '/api/v5/account/trade-fee', { instType: 'SPOT', instId: native(symbol) }))[0];
+      if (!row) throw new ExchangeError(id, `no fee rate for ${symbol}`, 'fee');
+      return -Number(row.taker);
     },
     async checkKeySafety() {
       const perm = String((await signed('GET', '/api/v5/account/config'))[0]?.perm ?? '').split(',');

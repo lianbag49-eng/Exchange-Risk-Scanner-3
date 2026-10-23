@@ -6,7 +6,8 @@ import { bestOpportunity, spreads } from './opportunity.mjs';
 export const DEFAULTS = {
   exchanges: ['binance', 'bybit', 'okx'],
   symbols: ['BTC/USDT', 'ETH/USDT'],
-  // Default spot taker fees (fraction). Override with your actual VIP tier.
+  // Regular (non-VIP) global spot taker rates as a fraction. Live mode reads the account's real rate and uses
+  // whichever is higher; for backtests set these from `node cli.mjs fees`.
   fees: { binance: 0.001, bybit: 0.001, okx: 0.001 },
   minEdgeBps: 15,
   maxNotional: 200,
@@ -40,6 +41,26 @@ export function validateConfig(cfg) {
 }
 
 const split = s => { const [base, quote] = s.split('/'); return { base, quote }; };
+
+/**
+ * Read each account's real taker rate (highest across the configured symbols) and never trade below it:
+ * the effective fee is max(configured, actual), so a config set to a VIP tier you do not have cannot make a
+ * losing trade look profitable.
+ */
+export async function resolveFees({ cfg, adapters }) {
+  const rows = [], fees = { ...cfg.fees };
+  for (const id of cfg.exchanges) {
+    let actual = 0;
+    for (const symbol of cfg.symbols) {
+      const f = await adapters[id].fetchTakerFee(symbol);
+      if (!Number.isFinite(f) || f >= 0.01) throw Error(`${id}: implausible taker fee ${f} for ${symbol}`);
+      actual = Math.max(actual, f);
+    }
+    fees[id] = Math.max(cfg.fees[id], actual);
+    rows.push({ exchange: id, configured: cfg.fees[id], actual, used: fees[id] });
+  }
+  return { fees, rows };
+}
 
 export function createEngine({ cfg, adapters, executor, risk, log = console.log, now = Date.now }) {
   const markets = {};
