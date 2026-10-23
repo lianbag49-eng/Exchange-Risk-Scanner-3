@@ -134,6 +134,7 @@ test('risk gate enforces cooldown, daily loss, trade count and consecutive error
   let t = Date.parse('2026-10-22T10:00:00Z');
   const risk = new RiskManager({ dailyLossLimit: 10, maxTradesPerDay: 2, cooldownMs: 1000, maxConsecutiveErrors: 2 }, { now: () => t });
   const o = { symbol: 'X/USDT', buy: 'a', sell: 'b' };
+  assert.ok(new RiskManager({ dailyLossLimit: 10, maxTradesPerDay: 2, cooldownMs: 5000, maxConsecutiveErrors: 2 }, { now: () => 1000 }).allow(o).ok, 'a route that never traded has no cooldown, even with a clock near zero');
   risk.recordTrade(o, { realizedPnl: -4, unhedgedQty: 0 });
   assert.equal(risk.allow(o).reason, 'pair cooldown');
   t += 2000;

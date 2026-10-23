@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-// arb scan | run [--live] | status | reset   (options: --config file.json --symbols A/B,C/D --exchanges x,y)
-import { readFileSync } from 'node:fs';
+// arb scan | record --out f.jsonl --hours 6 | backtest --data f.jsonl [--latency 300] | run [--live] | status | reset
+// common options: --config file.json --symbols A/B,C/D --exchanges x,y
+import { readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { ADAPTERS, credsFromEnv } from './src/exchanges.mjs';
 import { DEFAULTS, validateConfig, createEngine } from './src/engine.mjs';
 import { spreads } from './src/opportunity.mjs';
 import { RiskManager } from './src/risk.mjs';
 import { paperExecutor, liveExecutor } from './src/executor.mjs';
+import { record } from './src/recorder.mjs';
+import { backtest, readRecording, formatReport } from './src/backtest.mjs';
 
 const LIVE_CONFIRM = 'I_ACCEPT_REAL_FUNDS_RISK';
 
@@ -59,15 +62,40 @@ async function run(cfg, live) {
   console.log('balances:', JSON.stringify(executor.balances));
 }
 
+async function recordCmd(cfg, values) {
+  const hours = Number(values.hours ?? 1);
+  if (!(hours > 0)) throw Error('--hours must be positive');
+  const out = values.out ?? `data/books-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.jsonl`;
+  const adapters = Object.fromEntries(cfg.exchanges.map(id => [id, ADAPTERS[id]()]));
+  const ac = new AbortController();
+  process.once('SIGINT', () => ac.abort());
+  console.log(`recording ${cfg.symbols.join(', ')} on ${cfg.exchanges.join('/')} every ${cfg.intervalMs}ms for ${hours}h → ${out}`);
+  console.log(JSON.stringify(await record({ cfg, adapters, out, durationMs: hours * 3.6e6, signal: ac.signal })));
+}
+
+async function backtestCmd(cfg, values) {
+  if (!values.data) throw Error('backtest needs --data <recording.jsonl> (make one with: node cli.mjs record)');
+  const latencyMs = Number(values.latency ?? 300);
+  if (!(latencyMs >= 0)) throw Error('--latency must be >= 0');
+  const { summary, trades } = await backtest(readRecording(values.data), cfg, { latencyMs });
+  console.log(formatReport(summary));
+  if (values.trades) { writeFileSync(values.trades, trades.map(t => JSON.stringify(t)).join('\n') + '\n'); console.log(`trades → ${values.trades}`); }
+}
+
 async function main(argv) {
   const { values, positionals } = parseArgs({
     args: argv, allowPositionals: true,
-    options: { config: { type: 'string' }, symbols: { type: 'string' }, exchanges: { type: 'string' }, live: { type: 'boolean', default: false } },
+    options: {
+      config: { type: 'string' }, symbols: { type: 'string' }, exchanges: { type: 'string' }, live: { type: 'boolean', default: false },
+      out: { type: 'string' }, hours: { type: 'string' }, data: { type: 'string' }, latency: { type: 'string' }, trades: { type: 'string' },
+    },
   });
   const cmd = positionals[0] ?? 'scan';
   const cfg = loadConfig(values);
   if (cmd === 'scan') return scan(cfg);
   if (cmd === 'run') return run(cfg, values.live);
+  if (cmd === 'record') return recordCmd(cfg, values);
+  if (cmd === 'backtest') return backtestCmd(cfg, values);
   const risk = new RiskManager(cfg, { statePath: cfg.statePath });
   if (cmd === 'status') return console.log(JSON.stringify(risk.state, null, 2));
   if (cmd === 'reset') { risk.reset(); return console.log('halt cleared'); }

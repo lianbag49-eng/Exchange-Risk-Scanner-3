@@ -30,7 +30,7 @@ export class RiskManager {
     if (s.halted) return { ok: false, reason: `halted: ${s.haltReason}` };
     if (s.dayPnl <= -this.dailyLossLimit) return { ok: false, reason: 'daily loss limit reached' };
     if (s.tradesToday >= this.maxTradesPerDay) return { ok: false, reason: 'daily trade count reached' };
-    if (this.now() - (s.lastTradeAt[key] ?? 0) < this.cooldownMs) return { ok: false, reason: 'pair cooldown' };
+    if (key in s.lastTradeAt && this.now() - s.lastTradeAt[key] < this.cooldownMs) return { ok: false, reason: 'pair cooldown' };
     return { ok: true };
   }
 
