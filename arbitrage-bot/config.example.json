@@ -1,0 +1,22 @@
+{
+  "exchanges": ["binance", "bybit", "okx"],
+  "symbols": ["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+  "fees": { "binance": 0.001, "bybit": 0.001, "okx": 0.001 },
+  "minEdgeBps": 15,
+  "maxNotional": 200,
+  "depth": 20,
+  "intervalMs": 2000,
+  "maxBookAgeMs": 800,
+  "dailyLossLimit": 20,
+  "maxTradesPerDay": 200,
+  "cooldownMs": 3000,
+  "maxConsecutiveErrors": 5,
+  "balanceRefreshTicks": 30,
+  "journalPath": "data/journal.jsonl",
+  "statePath": "data/risk-state.json",
+  "paperBalances": {
+    "binance": { "USDT": 1000, "BTC": 0.01, "ETH": 0.3, "SOL": 5 },
+    "bybit": { "USDT": 1000, "BTC": 0.01, "ETH": 0.3, "SOL": 5 },
+    "okx": { "USDT": 1000, "BTC": 0.01, "ETH": 0.3, "SOL": 5 }
+  }
+}

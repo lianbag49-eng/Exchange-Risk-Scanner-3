@@ -1,0 +1,24 @@
+name: Arbitrage bot tests
+on:
+  push:
+    branches: [main]
+    paths: [arbitrage-bot/**, .github/workflows/arbitrage-bot.yml]
+  pull_request:
+    paths: [arbitrage-bot/**, .github/workflows/arbitrage-bot.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unit tests with mocked exchanges (no network, no keys)
+        working-directory: arbitrage-bot
+        run: npm test
