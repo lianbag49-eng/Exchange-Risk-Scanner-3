@@ -20,6 +20,8 @@ export const DEFAULTS = {
   cooldownMs: 3000,
   maxConsecutiveErrors: 5,
   balanceRefreshTicks: 30,
+  // 'rest' polls every venue each tick; 'ws' reads pushed books (Binance, Bybit, OKX) and polls the rest.
+  feed: 'rest',
   journalPath: 'data/journal.jsonl',
   statePath: 'data/risk-state.json',
   paperBalances: {
@@ -36,6 +38,7 @@ export function validateConfig(cfg) {
   for (const s of cfg.symbols ?? []) if (!/^[A-Z0-9]{2,15}\/[A-Z0-9]{2,15}$/.test(s)) errs.push(`bad symbol ${s}`);
   for (const k of ['minEdgeBps', 'maxNotional', 'intervalMs', 'maxBookAgeMs', 'dailyLossLimit', 'maxTradesPerDay', 'maxConsecutiveErrors'])
     if (!(Number.isFinite(cfg[k]) && cfg[k] > 0)) errs.push(`${k} must be a positive number`);
+  if (!['rest', 'ws'].includes(cfg.feed)) errs.push("feed must be 'rest' or 'ws'");
   if (cfg.minEdgeBps < 5) errs.push('minEdgeBps below 5 is almost always eaten by slippage and latency');
   if (errs.length) throw Error(`invalid config:\n - ${errs.join('\n - ')}`);
   return cfg;
@@ -63,7 +66,7 @@ export async function resolveFees({ cfg, adapters }) {
   return { fees, rows };
 }
 
-export function createEngine({ cfg, adapters, executor, risk, log = console.log, now = Date.now, notify = silentNotifier }) {
+export function createEngine({ cfg, adapters, executor, risk, log = console.log, now = Date.now, notify = silentNotifier, feed = null }) {
   const markets = {};
   let tick = 0, haltAnnounced = false;
   const tag = () => (executor.mode === 'live' ? '실거래' : '모의');
@@ -94,10 +97,15 @@ export function createEngine({ cfg, adapters, executor, risk, log = console.log,
     return markets;
   }
 
-  /** Fetch every venue's book in parallel; drop slow responses so both legs come from the same moment. */
+  /**
+   * Latest book per venue: a fresh WebSocket copy when a feed has one, otherwise a parallel REST fetch. Slow or
+   * stale books are dropped so both legs come from the same moment.
+   */
   async function snapshot(symbol) {
     const ids = Object.keys(markets[symbol]), books = {};
     await Promise.all(ids.map(async id => {
+      const pushed = feed?.get(symbol, id);
+      if (pushed && now() - pushed.t <= cfg.maxBookAgeMs) { books[id] = pushed.book; return; }
       const t0 = now();
       try {
         const b = await adapters[id].fetchBook(symbol, cfg.depth);

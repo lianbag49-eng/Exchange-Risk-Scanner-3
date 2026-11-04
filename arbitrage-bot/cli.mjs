@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // arb scan | fees | record --out f.jsonl --hours 6 | backtest --data f.jsonl [--latency 300] | run [--live] | status | reset
-// common options: --config file.json --symbols A/B,C/D --exchanges x,y
+// common options: --config file.json --symbols A/B,C/D --exchanges x,y --feed rest|ws
 import { readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { ADAPTERS, credsFromEnv } from './src/exchanges.mjs';
@@ -10,6 +10,7 @@ import { RiskManager } from './src/risk.mjs';
 import { paperExecutor, liveExecutor } from './src/executor.mjs';
 import { record } from './src/recorder.mjs';
 import { notifierFromEnv } from './src/notify.mjs';
+import { createBookFeed } from './src/feeds.mjs';
 import { backtest, readRecording, formatReport } from './src/backtest.mjs';
 
 const LIVE_CONFIRM = 'I_ACCEPT_REAL_FUNDS_RISK';
@@ -19,6 +20,7 @@ export function loadConfig(values, env = process.env) {
   const cfg = { ...DEFAULTS, ...file, fees: { ...DEFAULTS.fees, ...file.fees } };
   if (values.symbols) cfg.symbols = values.symbols.split(',');
   if (values.exchanges) cfg.exchanges = values.exchanges.split(',');
+  if (values.feed) cfg.feed = values.feed;
   for (const id of cfg.exchanges) if (!ADAPTERS[id]) throw Error(`unsupported exchange ${id} (supported: ${Object.keys(ADAPTERS).join(', ')})`);
   if (values.live && env.ARB_LIVE_CONFIRM !== LIVE_CONFIRM) throw Error(`live mode needs ARB_LIVE_CONFIRM=${LIVE_CONFIRM}`);
   return validateConfig(cfg);
@@ -76,11 +78,22 @@ async function run(cfg, live) {
     adapters = Object.fromEntries(cfg.exchanges.map(id => [id, ADAPTERS[id]()]));
     executor = paperExecutor({ balances: structuredClone(cfg.paperBalances), fees: cfg.fees });
   }
-  const engine = createEngine({ cfg, adapters, executor, risk, notify: notifierFromEnv() });
+  const feed = await startFeed(cfg);
+  const engine = createEngine({ cfg, adapters, executor, risk, notify: notifierFromEnv(), feed });
   const ac = new AbortController();
   process.once('SIGINT', () => { console.log('\nstopping after current tick…'); ac.abort(); });
-  await engine.run({ signal: ac.signal });
+  try { await engine.run({ signal: ac.signal }); } finally { feed?.stop(); }
   console.log('balances:', JSON.stringify(executor.balances));
+}
+
+/** WebSocket books for venues that have a connector; the rest keep polling REST. Waits briefly for first books. */
+async function startFeed(cfg) {
+  if (cfg.feed !== 'ws') return null;
+  const feed = createBookFeed({ exchanges: cfg.exchanges, symbols: cfg.symbols, depth: cfg.depth });
+  feed.start();
+  console.log(`websocket feed: ${feed.venues.join(', ') || 'none'}${feed.venues.length < cfg.exchanges.length ? ` (REST: ${cfg.exchanges.filter(e => !feed.venues.includes(e)).join(', ')})` : ''}`);
+  await new Promise(r => setTimeout(r, 3000));
+  return feed;
 }
 
 async function recordCmd(cfg, values) {
@@ -91,7 +104,9 @@ async function recordCmd(cfg, values) {
   const ac = new AbortController();
   process.once('SIGINT', () => ac.abort());
   console.log(`recording ${cfg.symbols.join(', ')} on ${cfg.exchanges.join('/')} every ${cfg.intervalMs}ms for ${hours}h → ${out}`);
-  console.log(JSON.stringify(await record({ cfg, adapters, out, durationMs: hours * 3.6e6, signal: ac.signal })));
+  const feed = await startFeed(cfg);
+  try { console.log(JSON.stringify(await record({ cfg, adapters, out, durationMs: hours * 3.6e6, signal: ac.signal, feed }))); }
+  finally { feed?.stop(); }
 }
 
 async function backtestCmd(cfg, values) {
@@ -109,6 +124,7 @@ async function main(argv) {
     options: {
       config: { type: 'string' }, symbols: { type: 'string' }, exchanges: { type: 'string' }, live: { type: 'boolean', default: false },
       out: { type: 'string' }, hours: { type: 'string' }, data: { type: 'string' }, latency: { type: 'string' }, trades: { type: 'string' },
+      feed: { type: 'string' },
     },
   });
   const cmd = positionals[0] ?? 'scan';
