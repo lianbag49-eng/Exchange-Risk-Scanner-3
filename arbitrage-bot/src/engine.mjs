@@ -2,6 +2,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { bestOpportunity, spreads } from './opportunity.mjs';
+import { silentNotifier, tradeMessage } from './notify.mjs';
 
 export const DEFAULTS = {
   exchanges: ['binance', 'bybit', 'okx'],
@@ -62,9 +63,16 @@ export async function resolveFees({ cfg, adapters }) {
   return { fees, rows };
 }
 
-export function createEngine({ cfg, adapters, executor, risk, log = console.log, now = Date.now }) {
+export function createEngine({ cfg, adapters, executor, risk, log = console.log, now = Date.now, notify = silentNotifier }) {
   const markets = {};
-  let tick = 0;
+  let tick = 0, haltAnnounced = false;
+  const tag = () => (executor.mode === 'live' ? '실거래' : '모의');
+  const announceHalt = () => {
+    if (haltAnnounced || !risk.state.halted) return;
+    haltAnnounced = true;
+    log(journal({ type: 'halt', reason: risk.state.haltReason }));
+    notify.send(`🛑 [${tag()}] 봇 정지: ${risk.state.haltReason}`);
+  };
 
   const journal = entry => {
     const line = JSON.stringify({ at: new Date(now()).toISOString(), mode: executor.mode, ...entry });
@@ -119,23 +127,28 @@ export function createEngine({ cfg, adapters, executor, risk, log = console.log,
       const res = await executor.execute(opp, { books, ...split(symbol) });
       risk.recordTrade(opp, res);
       log(journal({ type: 'trade', opp, result: res }));
+      notify.send(tradeMessage(executor.mode, opp, res));
       if (executor.mode === 'live') await executor.refreshBalances([opp.buy, opp.sell]);
       results.push({ symbol, opp, result: res });
-      if (risk.state.halted) { log(journal({ type: 'halt', reason: risk.state.haltReason })); break; }
+      if (risk.state.halted) { announceHalt(); break; }
     }
     return results;
   }
 
   async function run({ signal } = {}) {
     await init();
-    log(`${executor.mode} mode · ${Object.keys(markets).join(', ')} · ${cfg.exchanges.join('/')} · min edge ${cfg.minEdgeBps}bps · max ${cfg.maxNotional} per trade`);
+    const banner = `${executor.mode} mode · ${Object.keys(markets).join(', ')} · ${cfg.exchanges.join('/')} · min edge ${cfg.minEdgeBps}bps · max ${cfg.maxNotional} per trade`;
+    log(banner);
+    notify.send(`▶️ [${tag()}] 시작: ${banner}`);
     while (!signal?.aborted && !risk.state.halted) {
       const started = now();
       try { await runOnce(); risk.recordSuccess(); }
       catch (e) { log(`tick error: ${e.message}`); risk.recordError(e); }
       await new Promise(r => setTimeout(r, Math.max(0, cfg.intervalMs - (now() - started))));
     }
-    if (risk.state.halted) log(`HALTED: ${risk.state.haltReason}`);
+    if (risk.state.halted) { announceHalt(); log(`HALTED: ${risk.state.haltReason}`); }
+    else notify.send(`⏹ [${tag()}] 종료 (오늘 거래 ${risk.state.tradesToday}건, 손익 ${risk.state.dayPnl.toFixed(4)})`);
+    await notify.flush();
   }
 
   return { init, snapshot, runOnce, run, markets };

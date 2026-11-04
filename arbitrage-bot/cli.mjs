@@ -9,6 +9,7 @@ import { spreads } from './src/opportunity.mjs';
 import { RiskManager } from './src/risk.mjs';
 import { paperExecutor, liveExecutor } from './src/executor.mjs';
 import { record } from './src/recorder.mjs';
+import { notifierFromEnv } from './src/notify.mjs';
 import { backtest, readRecording, formatReport } from './src/backtest.mjs';
 
 const LIVE_CONFIRM = 'I_ACCEPT_REAL_FUNDS_RISK';
@@ -75,7 +76,7 @@ async function run(cfg, live) {
     adapters = Object.fromEntries(cfg.exchanges.map(id => [id, ADAPTERS[id]()]));
     executor = paperExecutor({ balances: structuredClone(cfg.paperBalances), fees: cfg.fees });
   }
-  const engine = createEngine({ cfg, adapters, executor, risk });
+  const engine = createEngine({ cfg, adapters, executor, risk, notify: notifierFromEnv() });
   const ac = new AbortController();
   process.once('SIGINT', () => { console.log('\nstopping after current tick…'); ac.abort(); });
   await engine.run({ signal: ac.signal });
