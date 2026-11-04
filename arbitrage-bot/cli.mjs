@@ -29,12 +29,16 @@ export function loadConfig(values, env = process.env) {
 async function scan(cfg) {
   const adapters = Object.fromEntries(cfg.exchanges.map(id => [id, ADAPTERS[id]()]));
   for (const symbol of cfg.symbols) {
-    const books = {};
+    const books = {}, ms = {};
     await Promise.all(cfg.exchanges.map(async id => {
-      try { books[id] = await adapters[id].fetchBook(symbol, 5); } catch (e) { console.log(`  ${symbol} ${id}: ${e.message}`); }
+      const t0 = performance.now();
+      try { books[id] = await adapters[id].fetchBook(symbol, 5); ms[id] = Math.round(performance.now() - t0); }
+      catch (e) { console.log(`  ${symbol} ${id}: ${e.message}`); }
     }));
     if (Object.keys(books).length < 2) { console.log(`${symbol}: fewer than two books`); continue; }
-    console.log(`\n${symbol}   buy@ask → sell@bid        gross bps   net bps (after taker fees)`);
+    // REST round trip from this machine; compare across server regions before choosing where to run the bot.
+    console.log(`\n${symbol}   응답 ${Object.entries(ms).map(([id, v]) => `${id} ${v}ms`).join(' · ')}`);
+    console.log(`  buy@ask → sell@bid                    gross bps   net bps (after taker fees)`);
     for (const r of spreads({ books, fees: cfg.fees }))
       console.log(`  ${r.buy.padEnd(8)}→ ${r.sell.padEnd(8)} ${String(r.ask).padStart(12)} ${String(r.bid).padStart(12)} ${r.grossBps.toFixed(2).padStart(9)} ${r.netBps.toFixed(2).padStart(9)}${r.netBps >= cfg.minEdgeBps ? '  ◀ above threshold' : ''}`);
   }
@@ -83,7 +87,10 @@ async function run(cfg, live) {
   const feed = await startFeed(cfg);
   const engine = createEngine({ cfg, adapters, executor, risk, notify: notifierFromEnv(), feed });
   const ac = new AbortController();
-  process.once('SIGINT', () => { console.log('\nstopping after current tick…'); ac.abort(); });
+  // pm2/systemd send SIGTERM; both signals finish the current tick so no order pair is cut in half.
+  const stop = () => { console.log('\nstopping after current tick…'); ac.abort(); };
+  process.once('SIGINT', stop);
+  process.once('SIGTERM', stop);
   try { await engine.run({ signal: ac.signal }); } finally { feed?.stop(); }
   console.log('balances:', JSON.stringify(executor.balances));
 }
@@ -105,6 +112,7 @@ async function recordCmd(cfg, values) {
   const adapters = Object.fromEntries(cfg.exchanges.map(id => [id, ADAPTERS[id]()]));
   const ac = new AbortController();
   process.once('SIGINT', () => ac.abort());
+  process.once('SIGTERM', () => ac.abort());
   console.log(`recording ${cfg.symbols.join(', ')} on ${cfg.exchanges.join('/')} every ${cfg.intervalMs}ms for ${hours}h → ${out}`);
   const feed = await startFeed(cfg);
   try { console.log(JSON.stringify(await record({ cfg, adapters, out, durationMs: hours * 3.6e6, signal: ac.signal, feed }))); }
