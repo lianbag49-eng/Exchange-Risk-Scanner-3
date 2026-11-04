@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { binance, bybit, okx, credsFromEnv } from '../src/exchanges.mjs';
+import { binance, bybit, okx, gate, bitget, credsFromEnv } from '../src/exchanges.mjs';
 import { createEngine, DEFAULTS, validateConfig, resolveFees } from '../src/engine.mjs';
 import { paperExecutor } from '../src/executor.mjs';
 import { RiskManager } from '../src/risk.mjs';
@@ -171,4 +171,30 @@ test('account taker fees are read per exchange and the bot never uses a fee belo
   assert.deepEqual(fees, { binance: 0.001, bybit: 0.001, okx: 0.002 }, 'max(configured, actual)');
   assert.equal(rows.find(r => r.exchange === 'okx').actual, 0.002);
   await assert.rejects(resolveFees({ cfg, adapters: { ...ex, okx: { fetchTakerFee: async () => NaN } } }), /implausible/);
+});
+
+test('Gate and Bitget: public books and market rules parse; they are public-only and refused for live mode', async () => {
+  const f = fakeFetch({
+    'GET /api/v4/spot/order_book': { id: 1, current: NOW, update: NOW, asks: [['101.5', '2']], bids: [['101.4', '1']] },
+    'GET /api/v4/spot/currency_pairs/BTC_USDT': { id: 'BTC_USDT', trade_status: 'tradable', amount_precision: 6, precision: 1, min_base_amount: '0.00001', min_quote_amount: '3' },
+    'GET /api/v2/spot/market/orderbook': { code: '00000', msg: 'success', data: { asks: [['101.6', '3']], bids: [['101.3', '4']], ts: String(NOW) } },
+    'GET /api/v2/spot/public/symbols': { code: '00000', data: [{ symbol: 'BTCUSDT', status: 'online', quantityPrecision: '6', pricePrecision: '2', minTradeAmount: '0', minTradeUSDT: '1' }] },
+  });
+  const g = gate({ fetchFn: f.fetchFn }), b = bitget({ fetchFn: f.fetchFn });
+  assert.deepEqual((await g.fetchBook('BTC/USDT')).asks, [[101.5, 2]]);
+  assert.deepEqual(await g.fetchMarket('BTC/USDT'), { lotStep: 0.000001, minQty: 0.00001, tickSize: 0.1, minNotional: 3 });
+  assert.deepEqual((await b.fetchBook('BTC/USDT')).bids, [[101.3, 4]]);
+  assert.deepEqual(await b.fetchMarket('BTC/USDT'), { lotStep: 0.000001, minQty: 0, tickSize: 0.01, minNotional: 1 });
+  const hosts = new Set(f.calls.map(c => c.url.host));
+  assert.deepEqual([...hosts].sort(), ['api.bitget.com', 'api.gateio.ws']);
+  assert.equal(f.calls.find(c => c.url.pathname === '/api/v4/spot/order_book').url.searchParams.get('currency_pair'), 'BTC_USDT');
+  for (const ex of [g, b]) { assert.equal(ex.publicOnly, true); assert.equal(ex.placeIoc, undefined); assert.equal(ex.fetchBalances, undefined); }
+
+  const halted = fakeFetch({
+    'GET /api/v4/spot/currency_pairs/BTC_USDT': { trade_status: 'untradable', amount_precision: 6, precision: 1 },
+    'GET /api/v2/spot/public/symbols': { code: '40034', msg: 'symbol does not exist' },
+  });
+  await assert.rejects(gate({ fetchFn: halted.fetchFn }).fetchMarket('BTC/USDT'), /not trading/);
+  await assert.rejects(bitget({ fetchFn: halted.fetchFn }).fetchMarket('BTC/USDT'), /code 40034/);
+  assert.ok(loadConfig({ exchanges: 'binance,gate,bitget' }));
 });

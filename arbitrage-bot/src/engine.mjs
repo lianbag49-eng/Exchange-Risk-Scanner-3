@@ -9,7 +9,7 @@ export const DEFAULTS = {
   symbols: ['BTC/USDT', 'ETH/USDT'],
   // Regular (non-VIP) global spot taker rates as a fraction. Live mode reads the account's real rate and uses
   // whichever is higher; for backtests set these from `node cli.mjs fees`.
-  fees: { binance: 0.001, bybit: 0.001, okx: 0.001 },
+  fees: { binance: 0.001, bybit: 0.001, okx: 0.001, gate: 0.001, bitget: 0.001 },
   minEdgeBps: 15,
   maxNotional: 200,
   depth: 20,
@@ -28,6 +28,8 @@ export const DEFAULTS = {
     binance: { USDT: 1000, BTC: 0.01, ETH: 0.3 },
     bybit: { USDT: 1000, BTC: 0.01, ETH: 0.3 },
     okx: { USDT: 1000, BTC: 0.01, ETH: 0.3 },
+    gate: { USDT: 1000, BTC: 0.01, ETH: 0.3 },
+    bitget: { USDT: 1000, BTC: 0.01, ETH: 0.3 },
   },
 };
 

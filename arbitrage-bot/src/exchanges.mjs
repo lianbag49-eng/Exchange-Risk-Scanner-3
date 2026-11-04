@@ -25,7 +25,7 @@ function makeHttp(id, host, { fetchFn = fetch, timeoutMs = 5000 } = {}) {
     }
     let json;
     try { json = await res.json(); } catch { throw new ExchangeError(id, `HTTP ${res.status} non-JSON response`, res.status, res.status); }
-    if (!res.ok) throw new ExchangeError(id, `HTTP ${res.status} ${json?.code ?? json?.retCode ?? ''} ${String(json?.msg ?? json?.retMsg ?? '').slice(0, 160)}`.trim(), json?.code ?? res.status, res.status);
+    if (!res.ok) throw new ExchangeError(id, `HTTP ${res.status} ${json?.code ?? json?.retCode ?? json?.label ?? ''} ${String(json?.msg ?? json?.retMsg ?? json?.message ?? '').slice(0, 160)}`.trim(), json?.code ?? res.status, res.status);
     return json;
   };
 }
@@ -206,7 +206,54 @@ export function okx({ creds, now = Date.now, wait = sleep, ...opts } = {}) {
   };
 }
 
-export const ADAPTERS = { binance, bybit, okx };
+// ---------------------------------------------------------------- Public-only venues
+// Gate and Bitget are wired for scan / record / backtest / paper only. Their order endpoints are not implemented
+// because neither could be verified against current docs here, and Gate exposes no way to confirm a key has no
+// withdrawal permission. They have no placeIoc, so live mode refuses them.
+const fromDecimals = d => Number((10 ** -Number(d)).toFixed(Number(d)));
+
+export function gate(opts = {}) {
+  const id = 'gate', http = makeHttp(id, 'https://api.gateio.ws', opts);
+  const native = s => { const { base, quote } = split(s); return `${base}_${quote}`; };
+  return {
+    id, publicOnly: true,
+    async fetchBook(symbol, depth = 20) {
+      const r = await http(`/api/v4/spot/order_book?currency_pair=${native(symbol)}&limit=${depth}`);
+      return normaliseBook({ bids: r.bids, asks: r.asks, ts: r.current });
+    },
+    async fetchMarket(symbol) {
+      const s = await http(`/api/v4/spot/currency_pairs/${native(symbol)}`);
+      if (s?.trade_status !== 'tradable') throw new ExchangeError(id, `${symbol} not trading`, 'market');
+      return {
+        lotStep: fromDecimals(s.amount_precision), minQty: Number(s.min_base_amount ?? 0),
+        tickSize: fromDecimals(s.precision), minNotional: Number(s.min_quote_amount ?? 0),
+      };
+    },
+  };
+}
+
+export function bitget(opts = {}) {
+  const id = 'bitget', http = makeHttp(id, 'https://api.bitget.com', opts);
+  const native = s => { const { base, quote } = split(s); return base + quote; };
+  const ok = r => { if (r.code !== '00000') throw new ExchangeError(id, `code ${r.code} ${String(r.msg ?? '').slice(0, 160)}`, r.code); return r.data; };
+  return {
+    id, publicOnly: true,
+    async fetchBook(symbol, depth = 20) {
+      const d = ok(await http(`/api/v2/spot/market/orderbook?symbol=${native(symbol)}&type=step0&limit=${depth}`));
+      return normaliseBook({ bids: d.bids, asks: d.asks, ts: Number(d.ts) });
+    },
+    async fetchMarket(symbol) {
+      const s = ok(await http(`/api/v2/spot/public/symbols?symbol=${native(symbol)}`))?.[0];
+      if (!s || s.status !== 'online') throw new ExchangeError(id, `${symbol} not trading`, 'market');
+      return {
+        lotStep: fromDecimals(s.quantityPrecision), minQty: Number(s.minTradeAmount ?? 0),
+        tickSize: fromDecimals(s.pricePrecision), minNotional: Number(s.minTradeUSDT ?? 0),
+      };
+    },
+  };
+}
+
+export const ADAPTERS = { binance, bybit, okx, gate, bitget };
 
 /** Credentials come only from the environment; nothing is read from or written to config files. */
 export function credsFromEnv(id, env = process.env) {

@@ -41,6 +41,8 @@ async function scan(cfg) {
 }
 
 function liveAdapters(cfg) {
+  const unsupported = cfg.exchanges.filter(id => ADAPTERS[id]().publicOnly);
+  if (unsupported.length) throw Error(`${unsupported.join(', ')}: live trading and account calls are not supported yet (scan, record, backtest and paper only)`);
   const adapters = {};
   for (const id of cfg.exchanges) {
     const creds = credsFromEnv(id);
